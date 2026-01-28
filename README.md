@@ -20,9 +20,9 @@ Agrega la dependencia en tu archivo `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  geo_engine:
+  geo_engine_sdk:
     git:
-      url: https://github.com/tu-usuario/geo-engine-flutter.git
+      url: https://github.com/AlexG695/geo-engine-dart.git
       ref: main
 ```
 
@@ -36,7 +36,7 @@ flutter pub get
 >
 > ```yaml
 > dependencies:
->   geo_engine: ^1.0.0
+>   geo_engine_sdk: ^1.0.0
 > ```
 
 ---
@@ -46,7 +46,7 @@ flutter pub get
 ### 1️⃣ Importar el paquete
 
 ```dart
-import 'package:geo_engine/geo_engine.dart';
+import 'package:geo_engine_sdk/geo_engine_sdk.dart';
 ```
 
 ### 2️⃣ Inicializar el cliente
