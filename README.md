@@ -65,9 +65,9 @@ try {
     longitude: -99.1332,
   );
 
-  print('✅ Enviado con éxito');
+  print('Enviado con éxito');
 } catch (e) {
-  print('❌ Error: $e');
+  print('Error: $e');
 }
 ```
 
