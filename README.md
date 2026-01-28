@@ -36,7 +36,7 @@ flutter pub get
 >
 > ```yaml
 > dependencies:
->   geo_engine_sdk: ^1.0.0
+>   geo_engine_sdk: ^1.0.3
 > ```
 
 ---
