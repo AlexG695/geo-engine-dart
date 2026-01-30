@@ -8,12 +8,13 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-class MockPathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
+class MockPathProvider extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
   @override
   Future<String?> getApplicationDocumentsPath() async {
     return '.';
   }
-  
+
   @override
   Future<String?> getTemporaryPath() async {
     return '.';
@@ -23,15 +24,15 @@ class MockPathProvider extends PathProviderPlatform with MockPlatformInterfaceMi
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    
+
     PathProviderPlatform.instance = MockPathProvider();
     final tempDir = Directory.systemTemp.createTempSync();
     Hive.init(tempDir.path);
-    
+
     const MethodChannel('dev.fluttercommunity.plus/connectivity')
         .setMockMethodCallHandler((MethodCall methodCall) async {
       if (methodCall.method == 'check') {
-        return 'wifi'; 
+        return 'wifi';
       }
       return null;
     });
@@ -46,7 +47,6 @@ void main() {
   });
 
   group('GeoEngine SDK Tests', () {
-    
     test('sendLocation debería guardar los datos en Hive (Buffer)', () async {
       final geo = GeoEngine(apiKey: 'test-key');
 
@@ -88,18 +88,16 @@ void main() {
       expect(box.length, 3);
     });
 
-    test('Si el servidor responde 200 OK, el buffer debería vaciarse', () async {
+    test('Si el servidor responde 200 OK, el buffer debería vaciarse',
+        () async {
       final mockClient = MockClient((request) async {
         print('📞 MockClient: Recibí una petición POST a ${request.url}');
         print('🔑 MockClient: Headers recibidos: ${request.headers}');
-        
+
         return http.Response('{"status": "success"}', 200);
       });
 
-      final geo = GeoEngine(
-        apiKey: 'test-key', 
-        client: mockClient 
-      );
+      final geo = GeoEngine(apiKey: 'test-key', client: mockClient);
 
       await geo.sendLocation(
         deviceId: 'device-success',
@@ -116,13 +114,14 @@ void main() {
         box = await Hive.openBox('geo_engine_buffer');
       }
 
-      expect(box.length, 0, reason: 'El buffer debería estar vacío tras un envío exitoso');
+      expect(box.length, 0,
+          reason: 'El buffer debería estar vacío tras un envío exitoso');
     });
   });
 
   tearDownAll(() async {
     try {
-      await Hive.close(); 
+      await Hive.close();
       await Hive.deleteFromDisk();
     } catch (e) {}
   });

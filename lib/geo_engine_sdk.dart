@@ -13,12 +13,13 @@ class GeoEngineException implements Exception {
   GeoEngineException(this.message, {this.statusCode});
 
   @override
-  String toString() => "GeoEngineException: $message ${statusCode != null ? '(Code: $statusCode)' : ''}";
+  String toString() =>
+      "GeoEngineException: $message ${statusCode != null ? '(Code: $statusCode)' : ''}";
 }
 
 class GeoEngine {
   static const String _defaultManagementUrl = 'https://api.geo-engine.dev';
-  static const String _defaultIngestUrl = 'https://ingest.geo-engine.dev'; 
+  static const String _defaultIngestUrl = 'https://ingest.geo-engine.dev';
   static const String _boxName = 'geo_engine_buffer';
 
   final String apiKey;
@@ -30,7 +31,7 @@ class GeoEngine {
 
   Box? _bufferBox;
   StreamSubscription? _networkSubscription;
-  bool _isFlushing = false; 
+  bool _isFlushing = false;
 
   static Future<void> initialize() async {
     await Hive.initFlutter();
@@ -55,11 +56,14 @@ class GeoEngine {
       _bufferBox = await Hive.openBox(_boxName);
     }
 
-    _networkSubscription = Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    _networkSubscription = Connectivity()
+        .onConnectivityChanged
+        .listen((ConnectivityResult result) {
       bool hasInternet = result != ConnectivityResult.none;
-      
+
       if (hasInternet) {
-        if (debug) print('[GeoEngine] Conexión detectada. Sincronizando buffer...');
+        if (debug)
+          print('[GeoEngine] Conexión detectada. Sincronizando buffer...');
         _flushBuffer();
       }
     });
@@ -72,20 +76,23 @@ class GeoEngine {
     int? timestamp,
   }) async {
     final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
-    
+
     final data = {
       'device_id': deviceId,
       'latitude': latitude,
       'longitude': longitude,
-      'timestamp': DateTime.fromMillisecondsSinceEpoch(ts * 1000).toIso8601String(),
+      'timestamp':
+          DateTime.fromMillisecondsSinceEpoch(ts * 1000).toIso8601String(),
     };
 
     if (_bufferBox != null) {
       await _bufferBox!.add(data);
-      if (debug) print('[GeoEngine] Ping guardado. Buffer: ${_bufferBox!.length} items.');
+      if (debug)
+        print(
+            '[GeoEngine] Ping guardado. Buffer: ${_bufferBox!.length} items.');
     }
 
-    _flushBuffer(); 
+    _flushBuffer();
   }
 
   Future<void> _flushBuffer() async {
@@ -97,38 +104,43 @@ class GeoEngine {
       return;
     }
 
-    _isFlushing = true; 
+    _isFlushing = true;
 
     try {
       final rawData = _bufferBox!.values.toList();
-      
+
       final batchPayload = rawData.map((item) {
         final map = Map<String, dynamic>.from(item as Map);
         return {
           'device_id': map['device_id'],
-          'lat': map['latitude'],    
-          'lng': map['longitude'],   
+          'lat': map['latitude'],
+          'lng': map['longitude'],
           'timestamp': map['timestamp']
         };
       }).toList();
 
-      if (debug) print('[GeoEngine] Enviando batch de ${batchPayload.length} puntos...');
+      if (debug)
+        print('[GeoEngine] Enviando batch de ${batchPayload.length} puntos...');
 
       final uri = Uri.parse('$ingestUrl/v1/ingest/batch');
 
-      final response = await _client.post(
-        uri,
-        headers: _headers,
-        body: jsonEncode(batchPayload),
-      ).timeout(timeout);
+      final response = await _client
+          .post(
+            uri,
+            headers: _headers,
+            body: jsonEncode(batchPayload),
+          )
+          .timeout(timeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (debug) print('[GeoEngine] Batch enviado exitosamente. Limpiando buffer.');
+        if (debug)
+          print('[GeoEngine] Batch enviado exitosamente. Limpiando buffer.');
         await _bufferBox!.clear();
       } else {
-        if (debug) print('[GeoEngine] Error Servidor (${response.statusCode}): ${response.body}');
+        if (debug)
+          print(
+              '[GeoEngine] Error Servidor (${response.statusCode}): ${response.body}');
       }
-
     } catch (e) {
       if (debug) print('[GeoEngine] Error de Red al sincronizar: $e');
     } finally {
@@ -142,12 +154,14 @@ class GeoEngine {
     required String webhookUrl,
   }) async {
     if (coordinates.length < 3) {
-      throw GeoEngineException("Se requieren al menos 3 puntos para un polígono");
+      throw GeoEngineException(
+          "Se requieren al menos 3 puntos para un polígono");
     }
 
     final polygon = coordinates.map((p) => [p[1], p[0]]).toList();
 
-    if (polygon.first[0] != polygon.last[0] || polygon.first[1] != polygon.last[1]) {
+    if (polygon.first[0] != polygon.last[0] ||
+        polygon.first[1] != polygon.last[1]) {
       polygon.add(polygon.first);
     }
 
@@ -161,21 +175,21 @@ class GeoEngine {
     };
 
     final uri = Uri.parse('$managementUrl/geofences');
-    
+
     if (debug) print('[GeoEngine] Creating geofence: $name');
 
     try {
-      final response = await _client.post(
-        uri,
-        headers: _headers,
-        body: jsonEncode(payload),
-      ).timeout(timeout);
+      final response = await _client
+          .post(
+            uri,
+            headers: _headers,
+            body: jsonEncode(payload),
+          )
+          .timeout(timeout);
 
       if (response.statusCode >= 400) {
-        throw GeoEngineException(
-          'Management Error: ${response.body}',
-          statusCode: response.statusCode
-        );
+        throw GeoEngineException('Management Error: ${response.body}',
+            statusCode: response.statusCode);
       }
 
       return jsonDecode(response.body);
@@ -186,12 +200,12 @@ class GeoEngine {
       rethrow;
     }
   }
-  
+
   Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'X-API-Key': apiKey,
-    'User-Agent': 'GeoEngineFlutter/1.1.0',
-  };
+        'Content-Type': 'application/json',
+        'X-API-Key': apiKey,
+        'User-Agent': 'GeoEngineFlutter/1.1.0',
+      };
 
   void close() {
     _networkSubscription?.cancel();
