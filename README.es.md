@@ -73,6 +73,21 @@ try {
 }
 ```
 
+## 🔒 Security Configuration (Optional but Recommended)
+
+To enable Device Integrity checks (blocking emulators and rooted devices), 
+you must provide your Android Cloud Project Number.
+
+### Option A: Via Constructor (Easiest)
+Pass your project number when initializing the engine:
+
+```dart
+final geo = GeoEngine(
+  apiKey: "YOUR_API_KEY",
+  androidCloudProjectNumber: "1234567890", // <--- De la Consola de Google Cloud o Consola de Firebase
+);
+```
+
 ---
 
 ## 🔧 Configuración Avanzada

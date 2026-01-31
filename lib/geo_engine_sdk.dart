@@ -5,6 +5,7 @@ import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'app_device_integrity.dart';
 
 class GeoEngineException implements Exception {
   final String message;
@@ -21,12 +22,16 @@ class GeoEngine {
   static const String _defaultManagementUrl = 'https://api.geo-engine.dev';
   static const String _defaultIngestUrl = 'https://ingest.geo-engine.dev';
   static const String _boxName = 'geo_engine_buffer';
+  String? _cachedIntegrityToken;
+  static const String _envProjectNumber =
+      String.fromEnvironment('GEO_ANDROID_PROJECT_NUMBER');
 
   final String apiKey;
   final String managementUrl;
   final String ingestUrl;
   final Duration timeout;
   final bool debug;
+  final String? androidCloudProjectNumber;
   final http.Client _client;
 
   Box? _bufferBox;
@@ -40,12 +45,17 @@ class GeoEngine {
 
   GeoEngine({
     required this.apiKey,
-    this.managementUrl = _defaultManagementUrl,
-    this.ingestUrl = _defaultIngestUrl,
+    String? managementUrl,
+    String? ingestUrl,
     this.timeout = const Duration(seconds: 10),
     this.debug = false,
+    String? androidCloudProjectNumber,
     http.Client? client,
-  }) : _client = client ?? http.Client() {
+  })  : managementUrl = managementUrl ?? _defaultManagementUrl,
+        ingestUrl = ingestUrl ?? _defaultIngestUrl,
+        androidCloudProjectNumber = androidCloudProjectNumber ??
+            (_envProjectNumber.isNotEmpty ? _envProjectNumber : null),
+        _client = client ?? http.Client() {
     _initInternals();
   }
 
@@ -58,8 +68,8 @@ class GeoEngine {
 
     _networkSubscription = Connectivity()
         .onConnectivityChanged
-        .listen((ConnectivityResult result) {
-      bool hasInternet = result != ConnectivityResult.none;
+        .listen((List<ConnectivityResult> results) {
+      bool hasInternet = !results.contains(ConnectivityResult.none);
 
       if (hasInternet) {
         if (debug)
@@ -95,11 +105,26 @@ class GeoEngine {
     _flushBuffer();
   }
 
+  Future<void> _ensureIntegrityToken() async {
+    if (_cachedIntegrityToken != null) return;
+
+    try {
+      _cachedIntegrityToken = await AppDeviceIntegrity.generateIntegrityToken(
+        cloudProjectNumber: androidCloudProjectNumber,
+      );
+      if (debug)
+        print('[GeoEngine] Token de integridad generado exitosamente.');
+    } catch (e) {
+      if (debug)
+        print('GeoEngine Warning: No se pudo verificar integridad: $e');
+    }
+  }
+
   Future<void> _flushBuffer() async {
     if (_bufferBox == null || _bufferBox!.isEmpty || _isFlushing) return;
 
     final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
+    if (connectivityResult.contains(ConnectivityResult.none)) {
       if (debug) print('[GeoEngine] Sin internet. Datos permanecen en local.');
       return;
     }
@@ -107,6 +132,7 @@ class GeoEngine {
     _isFlushing = true;
 
     try {
+      await _ensureIntegrityToken();
       final rawData = _bufferBox!.values.toList();
 
       final batchPayload = rawData.map((item) {
@@ -136,6 +162,11 @@ class GeoEngine {
         if (debug)
           print('[GeoEngine] Batch enviado exitosamente. Limpiando buffer.');
         await _bufferBox!.clear();
+      } else if (response.statusCode == 403) {
+        if (debug)
+          print(
+              '[GeoEngine] 403 Forbidden (Integridad/Auth). Reseteando token para el próximo intento.');
+        _cachedIntegrityToken = null;
       } else {
         if (debug)
           print(
@@ -205,6 +236,8 @@ class GeoEngine {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
         'User-Agent': 'GeoEngineFlutter/1.1.0',
+        if (_cachedIntegrityToken != null)
+          'X-Device-Integrity': _cachedIntegrityToken!,
       };
 
   void close() {
