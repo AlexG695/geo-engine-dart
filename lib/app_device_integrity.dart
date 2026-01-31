@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 class AppDeviceIntegrity {
   static const MethodChannel _channel = MethodChannel('app_device_integrity');
 
-  static Future<String?> generateIntegrityToken({String? cloudProjectNumber}) async {
+  static Future<String?> generateIntegrityToken(
+      {String? cloudProjectNumber}) async {
     try {
-      final String? token = await _channel.invokeMethod('generateIntegrityToken', {
+      final String? token =
+          await _channel.invokeMethod('generateIntegrityToken', {
         'cloudProjectNumber': cloudProjectNumber,
       });
       return token;
