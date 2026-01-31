@@ -7,7 +7,6 @@ import 'package:hive/hive.dart';
 import 'package:geo_engine_sdk/geo_engine_sdk.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class MockPathProvider extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -25,12 +24,6 @@ class MockPathProvider extends PathProviderPlatform
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-
-    try {
-      await dotenv.load(fileName: ".env");
-    } catch (e) {
-      print("Aviso: No se encontró .env, usando valores por defecto.");
-    }
 
     PathProviderPlatform.instance = MockPathProvider();
 
@@ -119,7 +112,7 @@ void main() {
       });
 
       final geo = GeoEngine(
-        apiKey: dotenv.env['TEST_API_KEY'] ?? 'test-key',
+        apiKey: 'test-key',
         androidCloudProjectNumber: '123456',
         client: mockClient,
       );
