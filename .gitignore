@@ -26,6 +26,12 @@ android/gradlew.bat
 android/local.properties
 **/android/app/build/
 **/android/app/release/
+local.properties
+**/*.jks
+**/*.keystore
+.gradle/
+.idea/
+android/app/src/main/assets/
 
 
 ios/Flutter/App.framework
@@ -36,6 +42,11 @@ ios/Flutter/app.zip
 ios/Flutter/flutter_assets/
 ios/ServiceDefinitions.json
 ios/Runner/GeneratedPluginRegistrant.*
+ios/Pods/
+**/*.xcworkspace/xcuserdata/
+**/*.xcodeproj/xcuserdata/
+*.derivedData
+.DS_Store
 
 linux/flutter/ephemeral/
 windows/flutter/ephemeral/
@@ -45,3 +56,10 @@ coverage/
 *.hive
 *.lock
 test/hive_db/
+
+pubspec.lock
+.vscode/
+*.swp
+
+*.iml
+.idea/

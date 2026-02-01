@@ -19,8 +19,8 @@ class GeoEngineException implements Exception {
 }
 
 class GeoEngine {
-  static const String _defaultManagementUrl = 'https://api.geo-engine.dev';
-  static const String _defaultIngestUrl = 'https://ingest.geo-engine.dev';
+  static const String _defaultManagementUrl = 'https://api.geoengine.dev';
+  static const String _defaultIngestUrl = 'https://ingest.geoengine.dev';
   static const String _boxName = 'geo_engine_buffer';
   String? _cachedIntegrityToken;
   static const String _envProjectNumber =

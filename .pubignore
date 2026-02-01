@@ -4,3 +4,9 @@ test/
 example/build/
 .git/
 .gitignore
+
+diagramas/
+design_docs/
+scripts/
+
+.github/

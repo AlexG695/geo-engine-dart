@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## [1.1.5] - 2026-01-31
+
+### Added
+- **CI/CD:** Configuración de GitHub Actions para ejecutar pruebas unitarias y verificar formato automáticamente en cada push y PR.
+- **Tests:** Suite completa de pruebas unitarias para `GeoEngine`.
+  - Simulación de escenarios offline (guardado en buffer Hive).
+  - Verificación de acumulación de datos (batching).
+  - Validación de sincronización exitosa con el servidor.
+- **Mocks:** Implementación de mocks para `path_provider` y `connectivity_plus` para entornos de prueba.
+
+### Changed
+- **Dependency Injection:** El constructor de `GeoEngine` ahora acepta un `http.Client` opcional para facilitar el testing y mocking de peticiones HTTP.
+
+### Fixed
+- **Buffer Flushing:** Solucionado un error donde los datos guardados en el buffer local no se eliminaban correctamente después de recibir un `200 OK` del servidor.
+- **Formatting:** Aplicado `dart format` a todo el proyecto para cumplir con los estándares de estilo de Dart.
+
 ## [1.1.4] - 2026-01-31
 
 ### Added
