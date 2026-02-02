@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [1.1.12] - 2026-02-02
+
+* 📚 **Documentation Fix:** Clarified `GeoEngine` instantiation usage in documentation comments.
+* 🐛 **Example Update:** Fixed `main.dart` in the example app to correctly implement `GeoEngine.initialize()`
+
 ## [1.1.11] - 2026-02-02
 
 * 🐛 **Cross-Platform Fix:** Fixed an issue where iOS clients were sending Android-specific integrity headers.

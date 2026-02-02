@@ -21,6 +21,10 @@ class GeoEngineException implements Exception {
       "GeoEngineException: $message ${statusCode != null ? '(Code: $statusCode)' : ''}";
 }
 
+/// The main entry point for the GeoEngine SDK.
+///
+/// Use this class to initialize the tracking system and handle
+/// location updates securely.
 class GeoEngine {
   static const String _defaultManagementUrl = 'https://api.geoengine.dev';
   static const String _defaultIngestUrl = 'https://ingest.geoengine.dev';
@@ -62,6 +66,9 @@ class GeoEngine {
     _initInternals();
   }
 
+  /// Initializes the SDK with your API Key.
+  ///
+  /// Throws an [Exception] if the key is invalid.
   void _initInternals() async {
     if (Hive.isBoxOpen(_boxName)) {
       _bufferBox = Hive.box(_boxName);
@@ -75,8 +82,9 @@ class GeoEngine {
       bool hasInternet = !results.contains(ConnectivityResult.none);
 
       if (hasInternet) {
-        if (debug)
+        if (debug) {
           print('[GeoEngine] Conexión detectada. Sincronizando buffer...');
+        }
         _flushBuffer();
       }
     });
@@ -84,6 +92,18 @@ class GeoEngine {
     _packageName = packageInfo.packageName;
   }
 
+  /// Sends a location point to the GeoEngine system.
+  ///
+  /// The data is first stored in a persistent local buffer to ensure
+  /// it is not lost if there is no internet connection. Then, it attempts
+  /// to automatically synchronize the buffer.
+  ///
+  /// Parameters:
+  /// - [deviceId]: Unique identifier for the device.
+  /// - [latitude]: Latitude in decimal degrees.
+  /// - [longitude]: Longitude in decimal degrees.
+  /// - [timestamp]: (Optional) Time of the reading in seconds since Unix epoch.
+  ///   If omitted, `DateTime.now()` is used.
   Future<void> sendLocation({
     required String deviceId,
     required double latitude,
@@ -102,9 +122,10 @@ class GeoEngine {
 
     if (_bufferBox != null) {
       await _bufferBox!.add(data);
-      if (debug)
+      if (debug) {
         print(
             '[GeoEngine] Ping guardado. Buffer: ${_bufferBox!.length} items.');
+      }
     }
 
     _flushBuffer();
@@ -117,14 +138,28 @@ class GeoEngine {
       _cachedIntegrityToken = await AppDeviceIntegrity.generateIntegrityToken(
         cloudProjectNumber: androidCloudProjectNumber,
       );
-      if (debug)
+      if (debug) {
         print('[GeoEngine] Token de integridad generado exitosamente.');
+      }
     } catch (e) {
-      if (debug)
+      if (debug) {
         print('GeoEngine Warning: No se pudo verificar integridad: $e');
+      }
     }
   }
 
+  /// Synchronizes the points accumulated in the local buffer with the server.
+  ///
+  /// This method is called automatically after [sendLocation] or when
+  /// internet connectivity is recovered.
+  ///
+  /// The process includes:
+  /// 1. Connectivity check.
+  /// 2. Generation/verification of the integrity token (App Attest/Play Integrity).
+  /// 3. Batch transmission to the ingest endpoint.
+  /// 4. Clearing the buffer if the response is successful (200-299).
+  ///
+  /// If a 403 error occurs, an integrity problem is assumed and the token is recycled.
   Future<void> _flushBuffer() async {
     if (_bufferBox == null || _bufferBox!.isEmpty || _isFlushing) return;
 
@@ -150,8 +185,9 @@ class GeoEngine {
         };
       }).toList();
 
-      if (debug)
+      if (debug) {
         print('[GeoEngine] Enviando batch de ${batchPayload.length} puntos...');
+      }
 
       final uri = Uri.parse('$ingestUrl/v1/ingest/batch');
 
@@ -164,18 +200,21 @@ class GeoEngine {
           .timeout(timeout);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (debug)
+        if (debug) {
           print('[GeoEngine] Batch enviado exitosamente. Limpiando buffer.');
+        }
         await _bufferBox!.clear();
       } else if (response.statusCode == 403) {
-        if (debug)
+        if (debug) {
           print(
               '[GeoEngine] 403 Forbidden (Integridad/Auth). Reseteando token para el próximo intento.');
+        }
         _cachedIntegrityToken = null;
       } else {
-        if (debug)
+        if (debug) {
           print(
               '[GeoEngine] Error Servidor (${response.statusCode}): ${response.body}');
+        }
       }
     } catch (e) {
       if (debug) print('[GeoEngine] Error de Red al sincronizar: $e');

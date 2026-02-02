@@ -1,12 +1,21 @@
-.env
-.github/
-test/
-example/build/
+
+build/
+.dart_tool/
 .git/
-.gitignore
+.idea/
+.vscode/
+*.iml
+*.DS_Store
 
-diagramas/
-design_docs/
-scripts/
+example/build/
+example/.dart_tool/
+example/ios/Pods/
+example/ios/.symlinks/
+example/macos/Pods/
+example/macos/.symlinks/
+example/windows/flutter/ephemeral/
+example/linux/flutter/ephemeral/
+example/.pub/
 
-.github/
+*.log
+tmp/
