@@ -2,9 +2,11 @@ library geo_engine;
 
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'app_device_integrity.dart';
 
 class GeoEngineException implements Exception {
@@ -23,6 +25,7 @@ class GeoEngine {
   static const String _defaultIngestUrl = 'https://ingest.geoengine.dev';
   static const String _boxName = 'geo_engine_buffer';
   String? _cachedIntegrityToken;
+  String? _packageName;
 
   final String apiKey;
   final String managementUrl;
@@ -73,6 +76,8 @@ class GeoEngine {
         _flushBuffer();
       }
     });
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    _packageName = packageInfo.packageName;
   }
 
   Future<void> sendLocation({
@@ -231,9 +236,17 @@ class GeoEngine {
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         'X-API-Key': apiKey,
-        'User-Agent': 'GeoEngineFlutter/1.1.0',
-        if (_cachedIntegrityToken != null)
-          'X-Device-Integrity': _cachedIntegrityToken!,
+        'User-Agent': 'GeoEngineFlutter/1.1.11',
+        if (Platform.isAndroid) ...{
+          'X-Platform': 'Android',
+          'X-Android-Package': _packageName ?? '',
+          if (_cachedIntegrityToken != null)
+            'X-Device-Integrity': _cachedIntegrityToken!,
+        },
+        if (Platform.isIOS) ...{
+          'X-IOS-Bundle-ID': _packageName ?? '',
+          'X-Platform': 'iOS',
+        }
       };
 
   void close() {

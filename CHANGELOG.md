@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [1.1.11] - 2026-02-02
+
+* 🐛 **Cross-Platform Fix:** Fixed an issue where iOS clients were sending Android-specific integrity headers.
+* 📱 **Platform Awareness:** Added conditional logic to strictly separate Android Play Integrity tokens from iOS requests using the `X-Platform` header.
+
 ## [1.1.10] - 2026-02-02
 
 * 📝 **Documentation Overhaul:** Completely redesigned README with a focus on Anti-Fraud features and Security.

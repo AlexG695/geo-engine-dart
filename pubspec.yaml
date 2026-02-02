@@ -1,6 +1,6 @@
 name: geo_engine_sdk
 description: SDK oficial para Geo-Engine. Rastreo de ubicación y gestión de geocercas.
-version: 1.1.10
+version: 1.1.11
 homepage: https://geoengine.dev
 
 environment:
@@ -16,6 +16,7 @@ dependencies:
   connectivity_plus: ^6.1.0
   path_provider: ^2.1.1
   app_device_integrity: ^1.0.0
+  package_info_plus: ^9.0.0
 
 dev_dependencies:
   flutter_test:
