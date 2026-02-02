@@ -3,6 +3,7 @@ library geo_engine;
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -34,6 +35,9 @@ class GeoEngine {
   final bool debug;
   final String? androidCloudProjectNumber;
   final http.Client _client;
+
+  @visibleForTesting
+  static bool? debugSimulateAndroid;
 
   Box? _bufferBox;
   StreamSubscription? _networkSubscription;
@@ -233,21 +237,27 @@ class GeoEngine {
     }
   }
 
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
-        'User-Agent': 'GeoEngineFlutter/1.1.11',
-        if (Platform.isAndroid) ...{
-          'X-Platform': 'Android',
-          'X-Android-Package': _packageName ?? '',
-          if (_cachedIntegrityToken != null)
-            'X-Device-Integrity': _cachedIntegrityToken!,
-        },
-        if (Platform.isIOS) ...{
-          'X-IOS-Bundle-ID': _packageName ?? '',
-          'X-Platform': 'iOS',
-        }
-      };
+  Map<String, String> get _headers {
+    final isAndroid = debugSimulateAndroid ?? Platform.isAndroid;
+    final isIOS =
+        !isAndroid && (debugSimulateAndroid == false ? true : Platform.isIOS);
+
+    return {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey,
+      'User-Agent': 'GeoEngineFlutter/1.1.11',
+      if (isAndroid) ...{
+        'X-Platform': 'Android',
+        'X-Android-Package': _packageName ?? '',
+        if (_cachedIntegrityToken != null)
+          'X-Device-Integrity': _cachedIntegrityToken!,
+      },
+      if (isIOS) ...{
+        'X-IOS-Bundle-ID': _packageName ?? '',
+        'X-Platform': 'iOS',
+      }
+    };
+  }
 
   void close() {
     _networkSubscription?.cancel();

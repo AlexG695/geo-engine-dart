@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import 'package:hive/hive.dart';
 import 'package:geo_engine_sdk/geo_engine_sdk.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class MockPathProvider extends PathProviderPlatform
     with MockPlatformInterfaceMixin {
@@ -44,6 +46,22 @@ void main() {
       }
       return null;
     });
+  });
+
+  setUp(() {
+    PackageInfo.setMockInitialValues(
+      appName: 'Geo Test',
+      packageName: 'com.alexg.geo_lab',
+      version: '1.0',
+      buildNumber: '1',
+      buildSignature: '',
+    );
+
+    GeoEngine.debugSimulateAndroid = true;
+  });
+  tearDown(() async {
+    GeoEngine.debugSimulateAndroid = null;
+    await Hive.deleteFromDisk();
   });
 
   setUp(() async {
