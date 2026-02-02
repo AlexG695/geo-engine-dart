@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
 
-> *Read this in English: [README.md](./README.md)*
+> *Leer este documento en inglés: [README.md](./README.md)*
 
 
 **Rastreo de ubicación Seguro, Offline-First y Eficiente en Batería para apps de Flutter de misión crítica.**
