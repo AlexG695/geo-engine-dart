@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## [1.1.10] - 2026-02-02
+
+* 📝 **Documentation Overhaul:** Completely redesigned README with a focus on Anti-Fraud features and Security.
+* 🌐 **Localization:** Added Spanish documentation (`README.es.md`).
+* 🛡️ **Security Guide:** Added clear guidelines on how to configure `androidCloudProjectNumber` for SaaS vs Self-Hosted environments.
+* ⚡ **UX:** Improved installation and quick start examples.
+
 ## [1.1.9] - 2026-02-01
 
 ### Fixed
