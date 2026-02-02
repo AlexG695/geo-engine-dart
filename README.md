@@ -4,6 +4,9 @@
 ![Build Status](https://github.com/AlexG695/geo-engine-dart/actions/workflows/flutter_test.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
+> *Read this in Spanish: [README.es.md](./README.es.md)*
+
+
 **Secure, Offline-First, and Battery-Efficient location tracking for mission-critical Flutter apps.**
 
 Geo-Engine is not just a location tracker; it is a **telemetry assurance layer**. It guarantees that the coordinates you receive come from a real physical device, rejecting Mock Locations, Emulators, and Bot Farms using cryptographic evidence.
@@ -68,6 +71,37 @@ final geo = GeoEngine(
 );
 
 ```
+
+## 🔒 Security Configuration (Anti-Fraud)
+
+To enable the **Device Integrity Shield** (which blocks emulators, rooted devices, and GPS spoofing), you must configure the `androidCloudProjectNumber`.
+
+### Which Project Number should I use?
+
+It depends on your backend:
+
+| Scenario | Project Number to Use |
+| :--- | :--- |
+| **A. Using Geo Engine Cloud (SaaS)** | Use our official ID: **`939798381003`** |
+| **B. Self-Hosted Backend** | Use your **own** Google Cloud Project Number. |
+
+### Implementation
+
+Pass the number in the constructor. This tells Google to encrypt the integrity token specifically for the backend verifyier.
+
+```dart
+final geo = GeoEngine(
+  apiKey: "YOUR_API_KEY",
+  
+  // 🛡️ SECURITY CONFIGURATION
+  // This enables Play Integrity (Android) & DeviceCheck (iOS)
+  // ---------------------------------------------------------
+  // Option A: Using Geo Engine official Cloud
+  androidCloudProjectNumber: "939798381003", 
+  
+  // Option B: Self-Hosted (Use your own Project ID)
+  // androidCloudProjectNumber: "YOUR_OWN_PROJECT_NUMBER",
+);
 
 ### 3️⃣ Send Verified Location
 

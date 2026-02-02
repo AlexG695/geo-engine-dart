@@ -1,149 +1,176 @@
-# 📱 Geo-Engine Flutter SDK
+# 🛡️ Geo-Engine Flutter SDK
 
+[![pub package](https://img.shields.io/pub/v/geo_engine_sdk.svg)](https://pub.dev/packages/geo_engine_sdk)
 ![Build Status](https://github.com/AlexG695/geo-engine-dart/actions/workflows/flutter_test.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
 
-Cliente oficial para integrar **rastreo de ubicación en tiempo real** en aplicaciones Flutter. Permite enviar coordenadas GPS de dispositivos móviles hacia la plataforma **Geo-Engine** de forma sencilla y segura.
+
+> *Read this in English: [README.md](./README.md)*
+
+
+**Rastreo de ubicación Seguro, Offline-First y Eficiente en Batería para apps de Flutter de misión crítica.**
+
+Geo-Engine no es simplemente un rastreador de ubicación; es una **capa de garantía de telemetría**. Asegura que las coordenadas que recibes provienen de un dispositivo físico real, rechazando Ubicaciones Simuladas (Mock Locations), Emuladores y Granjas de Bots mediante evidencia criptográfica.
+
+Diseñado para **Logística, Fintech y Gestión de Fuerza de Trabajo**.
 
 ---
 
-## ✨ Características
+## 🔥 ¿Por qué Geo-Engine?
 
-- 📍 Envío de ubicación (latitud / longitud)
-- 🔐 Autenticación mediante API Key
-- ⚡ API simple y asincrónica
-- 🧪 Soporte para entornos locales y de pruebas
-- 📦 Diseñado para apps Flutter (Android / iOS)
+| Característica | Descripción |
+| --- | --- |
+| 🛡️ **Anti-Spoofing** | Integración nativa con **Google Play Integrity** (Android) y **Apple DeviceCheck** (iOS) para verificar la autenticidad del dispositivo. |
+| ✈️ **Offline-First** | Resiliencia de grado militar. Los datos se persisten localmente (Hive) cuando no hay red y se sincronizan automáticamente al volver la conexión. |
+| 🔋 **Batería Inteligente** | Utiliza procesamiento por lotes (batching) inteligente para minimizar el uso del radio, ahorrando hasta un 40% de batería comparado con el streaming tradicional. |
+| 🚀 **Integración Rápida** | Obtén rastreo de nivel empresarial con solo 5 líneas de código. |
 
 ---
 
 ## 🚀 Instalación
 
-Agrega la dependencia en tu archivo `pubspec.yaml`:
-
-```yaml
-dependencies:
-  geo_engine_sdk:
-    git:
-      url: https://github.com/AlexG695/geo-engine-dart.git
-      ref: main
-```
-
-Luego ejecuta:
+Agrega el paquete oficial desde pub.dev:
 
 ```bash
-flutter pub get
-```
+flutter pub add geo_engine_sdk
 
-> 📝 **Nota**: En el futuro, cuando el paquete esté publicado en **pub.dev**, podrás instalarlo así:
->
-> ```yaml
-> dependencies:
->   geo_engine_sdk: ^1.0.3
-> ```
+```
 
 ---
 
-## ⚡ Uso Básico
+## ⚡ Inicio Rápido
 
-### 1️⃣ Importar el paquete
+### 1️⃣ Inicialización
+
+Inicializa el motor de almacenamiento dentro de tu función `main()`.
 
 ```dart
 import 'package:geo_engine_sdk/geo_engine_sdk.dart';
-```
 
-### 2️⃣ Inicializar el cliente
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 🚀 Inicializar el motor offline-first
+  await GeoEngine.initialize();
 
-```dart
-final geo = GeoEngine(apiKey: 'sk_live_...');
-```
-
-### 3️⃣ Enviar ubicación
-
-```dart
-try {
-  await geo.sendLocation(
-    deviceId: 'camion-01',
-    latitude: 19.4326,
-    longitude: -99.1332,
-  );
-
-  print('Enviado con éxito');
-} catch (e) {
-  print('Error: $e');
+  runApp(const MyApp());
 }
+
 ```
 
-## 🔒 Security Configuration (Optional but Recommended)
+### 2️⃣ Configuración (Con Seguridad)
 
-To enable Device Integrity checks (blocking emulators and rooted devices), 
-you must provide your Android Cloud Project Number.
-
-### Option A: Via Constructor (Easiest)
-Pass your project number when initializing the engine:
+Para activar el escudo **Anti-Fraude**, debes proporcionar el Número de Proyecto de Google Cloud.
 
 ```dart
 final geo = GeoEngine(
-  apiKey: "YOUR_API_KEY",
-  androidCloudProjectNumber: "1234567890", // <--- De la Consola de Google Cloud o Consola de Firebase
+  apiKey: 'sk_live_...',
+  // 🛡️ SEGURIDAD HABILITADA:
+  // Esto activa Play Integrity (Android) y DeviceCheck (iOS)
+  androidCloudProjectNumber: '1234567890', 
+  debug: true, 
 );
+
 ```
 
 ---
 
-## 🔧 Configuración Avanzada
+## 🔒 Configuración de Seguridad (Anti-Fraude)
 
-### Usar un servidor local o entorno de pruebas
+Para habilitar el **Escudo de Integridad del Dispositivo** (que bloquea emuladores, dispositivos rooteados y GPS spoofing), es obligatorio configurar el `androidCloudProjectNumber`.
 
-Si necesitas apuntar a un backend local (por ejemplo durante desarrollo), puedes sobrescribir la URL de ingestión:
+### ¿Qué Número de Proyecto debo usar?
+
+Depende de tu backend:
+
+| Escenario | Número de Proyecto a Usar |
+| --- | --- |
+| **A. Usando Geo Engine Cloud (SaaS)** | Usa nuestro ID oficial: **`939798381003`** |
+| **B. Backend Auto-alojado (Self-Hosted)** | Usa tu **propio** Número de Proyecto de Google Cloud. |
+
+### Implementación
+
+Pasa el número en el constructor. Esto le indica a Google que debe encriptar el token de integridad específicamente para el backend verificador.
 
 ```dart
 final geo = GeoEngine(
-  apiKey: 'sk_test_...',
-  ingestUrl: 'http://10.0.2.2:8080', // Localhost desde emulador Android
+  apiKey: "TU_API_KEY",
+  
+  // 🛡️ CONFIGURACIÓN DE SEGURIDAD
+  // Esto habilita Play Integrity (Android) y DeviceCheck (iOS)
+  // ---------------------------------------------------------
+  // Opción A: Usando la nube oficial de Geo Engine
+  androidCloudProjectNumber: "939798381003", 
+  
+  // Opción B: Infraestructura Propia (Usa tu propio Project ID)
+  // androidCloudProjectNumber: "TU_PROPIO_PROJECT_NUMBER",
 );
+
+```
+
+> **Nota:** Si se omite este parámetro, el SDK funcionará en "Modo No Verificado", y el backend podría rechazar los datos dependiendo de tus políticas de seguridad.
+
+### 3️⃣ Enviar Ubicación Verificada
+
+El SDK maneja la conectividad, el almacenamiento en búfer y los encabezados de seguridad automáticamente.
+
+```dart
+await geo.sendLocation(
+  deviceId: 'camion-042',
+  latitude: 19.4326,
+  longitude: -99.1332,
+);
+
+// ✅ Resultado:
+// - Si está Online: Se envía inmediatamente con el Token de Integridad.
+// - Si está Offline: Se encripta y guarda en disco. Se envía automáticamente después.
+
 ```
 
 ---
 
-## 📋 Parámetros
+## 🛡️ ¿Cómo funciona la Seguridad?
 
-### `sendLocation`
+Cuando envías una ubicación, Geo-Engine hace más que solo reenviar coordenadas:
 
-| Parámetro   | Tipo   | Descripción |
-|------------|--------|-------------|
-| deviceId   | String | Identificador único del dispositivo |
-| latitude   | double | Latitud GPS |
-| longitude  | double | Longitud GPS |
+1. **Desafío (Challenge):** Contacta al enclave seguro de hardware (TEE) del dispositivo.
+2. **Atestación (Attest):** Solicita una prueba criptográfica de que el dispositivo es genuino, no modificado y no es un emulador.
+3. **Verificación (Verify):** Este token se adjunta a la carga útil (payload). Tu backend (o Geo-Engine Cloud) lo verifica directamente con los servidores de Apple/Google.
 
----
-
-## 🚧 Manejo de Errores
-
-Todos los métodos lanzan excepciones en caso de error de red, autenticación o validación. Se recomienda envolver las llamadas en bloques `try / catch`.
+**Resultado:** Dejas de pagar por viajes falsos y asistencias simuladas.
 
 ---
 
-## 🛣 Roadmap
+## 🔧 Gestión de Geocercas (Geofences)
 
-- ⏱ Envío periódico de ubicación
-- 🔋 Optimización para bajo consumo de batería
-- 🗺 Integración con geocercas
-- 📦 Publicación oficial en pub.dev
+Crea zonas de monitoreo dinámicas programáticamente:
+
+```dart
+final zone = await geo.createGeofence(
+  name: "Almacén Central",
+  webhookUrl: "https://api.logistica.com/webhooks/entrada",
+  coordinates: [
+    [19.4, -99.1],
+    [19.5, -99.1],
+    [19.5, -99.2], 
+  ]
+);
+
+```
 
 ---
 
-## 🤝 Contribuir
+## 🛣 Roadmap y Soporte
 
-Las contribuciones son bienvenidas 🙌
+* [x] Almacenamiento Offline (Store & Forward)
+* [x] **v1.0:** Optimización de Batería (Batching)
+* [x] **v1.1:** Integridad de Dispositivo Nativa (Anti-Fraude)
+* [ ] v1.2: Detección de Actividad y Movimiento (Quieto/Caminando/Conduciendo)
 
-1. Haz un fork del repositorio
-2. Crea una rama (`feature/nueva-funcionalidad`)
-3. Haz commit de tus cambios
-4. Abre un Pull Request
+**¿Necesitas ayuda con la integración?** Abre un issue o contacta a los mantenedores.
 
 ---
 
 ## 📄 Licencia
 
 MIT License © Geo-Engine
-
