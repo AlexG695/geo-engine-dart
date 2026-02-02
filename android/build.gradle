@@ -2,14 +2,14 @@ group = "com.example.geo_engine_sdk"
 version = "1.0-SNAPSHOT"
 
 buildscript {
-    ext.kotlin_version = "2.2.20"
+    ext.kotlin_version = "2.0.0"
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath("com.android.tools.build:gradle:8.11.1")
+        classpath("com.android.tools.build:gradle:8.2.0")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version")
     }
 }
@@ -27,7 +27,7 @@ apply plugin: "kotlin-android"
 android {
     namespace = "com.example.geo_engine_sdk"
 
-    compileSdk = 36
+    compileSdk = 34
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -63,4 +63,9 @@ android {
             }
         }
     }
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'com.google.android.play:integrity:1.3.0'
 }

@@ -23,8 +23,6 @@ class GeoEngine {
   static const String _defaultIngestUrl = 'https://ingest.geoengine.dev';
   static const String _boxName = 'geo_engine_buffer';
   String? _cachedIntegrityToken;
-  static const String _envProjectNumber =
-      String.fromEnvironment('GEO_ANDROID_PROJECT_NUMBER');
 
   final String apiKey;
   final String managementUrl;
@@ -49,12 +47,10 @@ class GeoEngine {
     String? ingestUrl,
     this.timeout = const Duration(seconds: 10),
     this.debug = false,
-    String? androidCloudProjectNumber,
+    this.androidCloudProjectNumber,
     http.Client? client,
   })  : managementUrl = managementUrl ?? _defaultManagementUrl,
         ingestUrl = ingestUrl ?? _defaultIngestUrl,
-        androidCloudProjectNumber = androidCloudProjectNumber ??
-            (_envProjectNumber.isNotEmpty ? _envProjectNumber : null),
         _client = client ?? http.Client() {
     _initInternals();
   }

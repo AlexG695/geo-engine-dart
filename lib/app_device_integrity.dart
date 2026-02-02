@@ -8,7 +8,7 @@ class AppDeviceIntegrity {
     try {
       final String? token =
           await _channel.invokeMethod('generateIntegrityToken', {
-        'cloudProjectNumber': cloudProjectNumber,
+        'projectNumber': cloudProjectNumber,
       });
       return token;
     } on PlatformException catch (e) {

@@ -8,14 +8,18 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import com.google.android.play.core.integrity.IntegrityManagerFactory
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
+import android.content.Context
 
 class GeoEngineSdkPlugin: FlutterPlugin, MethodCallHandler {
     private lateinit var channel : MethodChannel
 
+    private lateinit var applicationContext: Context
+
     override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-        // 👇 CONECTAMOS EL CANAL
         channel = MethodChannel(flutterPluginBinding.binaryMessenger, "app_device_integrity")
         channel.setMethodCallHandler(this)
+
+        applicationContext = flutterPluginBinding.applicationContext
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
@@ -27,8 +31,7 @@ class GeoEngineSdkPlugin: FlutterPlugin, MethodCallHandler {
                 return
             }
 
-            val integrityManager = IntegrityManagerFactory.create(context)
-
+            val integrityManager = IntegrityManagerFactory.create(applicationContext)
             val nonce = java.util.UUID.randomUUID().toString()
 
             val request = com.google.android.play.core.integrity.IntegrityTokenRequest.builder()

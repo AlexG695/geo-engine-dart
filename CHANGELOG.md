@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## [1.1.9] - 2026-02-01
+
+### Fixed
+- **Android Context:** Se corrigió el error de que el Context de Android no fuera pasado al plugin.
+
+## [1.1.8] - 2026-02-01
+
+### Fixed
+- **Android Context:** Se corrigió el error de que el Context de Android no fuera pasado al plugin.
+
+## [1.1.7] - 2026-02-01
+
+### Fixed
+- **Bug fix:** Bug fix en la sincronización de datos con el servidor.
+
+## [1.1.6] - 2026-01-31
+
+### Added
+- **Security:** Implementación de Device Integrity checks para validar la autenticidad del dispositivo.
+- **Security:** Configuración de `androidCloudProjectNumber` para permitir la verificación de integridad en Android.
+- **Security:** Manejo de errores 403 para invalidar tokens de integridad en caso de detección de fraude.
+
+### Changed
+- **Dependency Injection:** El constructor de `GeoEngine` ahora acepta `androidCloudProjectNumber` como parámetro opcional.
+- **Documentation:** Actualización de `README.md` y `README.es.md` con instrucciones de configuración de seguridad.
+
+### Fixed
+- **Buffer Flushing:** Solucionado un error donde los datos guardados en el buffer local no se eliminaban correctamente después de recibir un `200 OK` del servidor.
+
 ## [1.1.5] - 2026-01-31
 
 ### Added
