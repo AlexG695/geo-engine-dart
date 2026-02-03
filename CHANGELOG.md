@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## [1.1.13] - 2026-02-03
+
+*  **Platform Awareness:** Added conditional logic to strictly separate Android Play Integrity tokens from iOS requests using the `X-Platform` header.
+
 ## [1.1.12] - 2026-02-02
 
 * 📚 **Documentation Fix:** Clarified `GeoEngine` instantiation usage in documentation comments.
