@@ -1,3 +1,7 @@
+/// The official GeoEngine SDK for Flutter.
+///
+/// Provides capabilities for location tracking, geofencing, and
+/// validating device integrity.
 library geo_engine;
 
 import 'dart:convert';
@@ -10,10 +14,15 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'app_device_integrity.dart';
 
+/// Custom exception thrown by the GeoEngine SDK when an error occurs.
 class GeoEngineException implements Exception {
+  /// A descriptive message of the error.
   final String message;
+
+  /// Optional HTTP status code associated with the error.
   final int? statusCode;
 
+  /// Creates a new [GeoEngineException].
   GeoEngineException(this.message, {this.statusCode});
 
   @override
@@ -32,12 +41,24 @@ class GeoEngine {
   String? _cachedIntegrityToken;
   String? _packageName;
 
+  /// The API key used for authenticating with the GeoEngine services.
   final String apiKey;
+
+  /// The base URL for the management API.
   final String managementUrl;
+
+  /// The base URL for the data ingestion API.
   final String ingestUrl;
+
+  /// The timeout duration for HTTP requests.
   final Duration timeout;
+
+  /// Whether to enable debug logging to the console.
   final bool debug;
+
+  /// The project number for Android Google Cloud, used for Device Integrity.
   final String? androidCloudProjectNumber;
+
   final http.Client _client;
 
   @visibleForTesting
@@ -47,11 +68,24 @@ class GeoEngine {
   StreamSubscription? _networkSubscription;
   bool _isFlushing = false;
 
+  /// Initializes the local environment for the SDK.
+  ///
+  /// This method must be called before creating any instance of [GeoEngine].
+  /// It initializes the local database (Hive) used for buffering location data.
   static Future<void> initialize() async {
     await Hive.initFlutter();
     await Hive.openBox(_boxName);
   }
 
+  /// Creates a new instance of [GeoEngine].
+  ///
+  /// - [apiKey]: Required. The API key for your GeoEngine project.
+  /// - [managementUrl]: Optional. Overrides the default management API URL.
+  /// - [ingestUrl]: Optional. Overrides the default ingestion API URL.
+  /// - [timeout]: Connection timeout for requests (default: 10 seconds).
+  /// - [debug]: If true, prints debug info to the console (default: false).
+  /// - [androidCloudProjectNumber]: Required for Android apps to use Play Integrity.
+  /// - [client]: Optional [http.Client] for testing.
   GeoEngine({
     required this.apiKey,
     String? managementUrl,
@@ -223,6 +257,16 @@ class GeoEngine {
     }
   }
 
+  /// Creates a new geofence polygon.
+  ///
+  /// - [name]: A human-readable name for the geofence.
+  /// - [coordinates]: A list of `[latitude, longitude]` pairs defining the polygon.
+  ///   Must contain at least 3 points.
+  /// - [webhookUrl]: The URL that will receive events when this geofence is triggered.
+  ///
+  /// Returns a [Map] containing the server response.
+  ///
+  /// Throws a [GeoEngineException] if the input is invalid or the server request fails.
   Future<Map<String, dynamic>> createGeofence({
     required String name,
     required List<List<double>> coordinates,
@@ -298,6 +342,9 @@ class GeoEngine {
     };
   }
 
+  /// Closes the SDK instance and releases resources.
+  ///
+  /// Cancels network connectivity subscriptions and closes the HTTP client.
   void close() {
     _networkSubscription?.cancel();
     _client.close();
