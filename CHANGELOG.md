@@ -1,5 +1,29 @@
 # CHANGELOG
 
+
+## [1.2.0] - 2026-03-01
+
+### 🚀 Added
+- **Zero-Trust Ingestion Flow**: Implemented a new secure handshake protocol between the Flutter SDK and the Go Backend.
+- **Integrity Verification**: Support for `androidCloudProjectNumber` to enable Google Play Integrity API checks.
+- **JWT Authentication**: The SDK now automatically handles JWT generation and rotation during the verification challenge.
+- **Anti-Spoofing Layer**: Native hooks for Android to detect location mocking and root status before sending coordinates.
+
+### ⚡ Changed
+- **Optimized Ingestion**: Refactored the `sendLocation` method to include the new security headers.
+- **Platform Support**: Updated iOS configuration to support **Swift Package Manager (SPM)**, improving compatibility with modern Flutter versions.
+- **Landing UI**: Brand new interactive documentation and tracking dashboard in the demo project.
+
+### 🛡️ Security
+- **Hardened Handshake**: All ingestion requests now require a valid, backend-signed JWT obtained through the challenge-verify flow.
+- **Environment Isolation**: Moved sensitive configurations to Google Secret Manager for production deployments.
+
+### 🐛 Fixed
+- Resolved an issue where some SVGs icons wouldn't render correctly in the documentation.
+- Fixed SSL Handshake errors in certain Android environments by enforcing a modern TLS policy (v1.2+).
+
+---
+
 ## [1.1.14] - 2026-02-03
 
 *  **Platform Awareness:** Added conditional logic to strictly separate Android Play Integrity tokens from iOS requests using the `X-Platform` header.
