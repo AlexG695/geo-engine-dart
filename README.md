@@ -71,6 +71,7 @@ final geo = GeoEngine(
 );
 
 ```
+---
 
 ## 🔒 Security Configuration (Anti-Fraud)
 
@@ -102,6 +103,7 @@ final geo = GeoEngine(
   // Option B: Self-Hosted (Use your own Project ID)
   // androidCloudProjectNumber: "YOUR_OWN_PROJECT_NUMBER",
 );
+``
 
 ### 3️⃣ Send Verified Location
 
@@ -126,9 +128,10 @@ await geo.sendLocation(
 
 When you send a location, Geo-Engine does more than just forward coordinates:
 
-1. **Challenge:** It contacts the device's secure hardware enclave (TEE).
-2. **Attest:** It requests a cryptographic proof that the device is genuine, unmodified, and not an emulator.
-3. **Verify:** This token is attached to the payload. Your backend (or Geo-Engine Cloud) verifies it directly with Apple/Google servers.
+1. **Challenge (Anti-Replay):** The SDK requests a cryptographic nonce from the Geo-Engine backend.
+2. **Verify & Session:** It asks the secure hardware enclave (TEE) for proof that the device is genuine, injecting the nonce to prevent replay attacks.
+3. **Verify:** The backend verifies the token with Google/Apple and issues a short-lived JWT Session.
+4. **Ultra-Fast Telemetry:** Coordinates are sent using the lightweight JWT, ensuring 0-latency Ingestion without sacrificing Zero-Trust security.
 
 **Outcome:** You stop paying for fake trips and spoofed attendance.
 
@@ -158,7 +161,8 @@ final zone = await geo.createGeofence(
 * [x] Offline Store & Forward
 * [x] **v1.0:** Battery Optimization (Batching)
 * [x] **v1.1:** Native Device Integrity (Anti-Fraud)
-* [ ] v1.2: Motion Activity Detection (Still/Walking/Driving)
+* [x] **v1.2:** Session-based Anti-Replay (Handshake + JWT)
+* [ ] v1.3: Motion Activity Detection (Still/Walking/Driving)
 
 **Need help integration?** Open an issue or contact the maintainers.
 

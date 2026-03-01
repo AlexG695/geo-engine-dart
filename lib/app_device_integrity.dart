@@ -16,11 +16,12 @@ class AppDeviceIntegrity {
   /// Returns a Base64 encoded token string or throws an exception if
   /// the device is not supported.
   static Future<String?> generateIntegrityToken(
-      {String? cloudProjectNumber}) async {
+      {String? cloudProjectNumber, String? nonce}) async {
     try {
       final String? token =
           await _channel.invokeMethod('generateIntegrityToken', {
         'projectNumber': cloudProjectNumber,
+        'nonce': nonce,
       });
       return token;
     } on PlatformException catch (e) {

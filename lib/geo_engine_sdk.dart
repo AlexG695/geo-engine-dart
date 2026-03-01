@@ -38,8 +38,11 @@ class GeoEngine {
   static const String _defaultManagementUrl = 'https://api.geoengine.dev';
   static const String _defaultIngestUrl = 'https://ingest.geoengine.dev';
   static const String _boxName = 'geo_engine_buffer';
-  String? _cachedIntegrityToken;
+  //String? _cachedIntegrityToken;
   String? _packageName;
+
+  String? _sessionJwt;
+  DateTime? _jwtExpiration;
 
   /// The API key used for authenticating with the GeoEngine services.
   final String apiKey;
@@ -165,16 +168,64 @@ class GeoEngine {
     _flushBuffer();
   }
 
-  Future<void> _ensureIntegrityToken() async {
-    if (_cachedIntegrityToken != null) return;
+  Future<void> _ensureIntegrityToken(String deviceId) async {
+    if (_sessionJwt != null &&
+        _jwtExpiration != null &&
+        _jwtExpiration!.isAfter(DateTime.now()) &&
+        DateTime.now().isBefore(_jwtExpiration!)) {
+      return;
+    }
 
     try {
-      _cachedIntegrityToken = await AppDeviceIntegrity.generateIntegrityToken(
-        cloudProjectNumber: androidCloudProjectNumber,
-      );
       if (debug) {
-        print('[GeoEngine] Token de integridad generado exitosamente.');
+        print('[GeoEngine] Generando token de integridad...');
       }
+
+      final challengeUri = Uri.parse('$managementUrl/api/v1/device/challenge');
+      final challengeRes = await _client
+          .post(challengeUri,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey
+              },
+              body: jsonEncode({'device_id': deviceId}))
+          .timeout(timeout);
+      if (challengeRes.statusCode != 200) {
+        throw GeoEngineException(
+            'Failed to get security challenge: ${challengeRes.body}');
+      }
+      final nonce = jsonDecode(challengeRes.body)['nonce'];
+      final playToken = await AppDeviceIntegrity.generateIntegrityToken(
+        cloudProjectNumber: androidCloudProjectNumber,
+        nonce: nonce,
+      );
+
+      final verifyUri = Uri.parse('$managementUrl/api/v1/device/verify');
+      final verifyRes = await _client
+          .post(verifyUri,
+              headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey,
+                'X-Package-Name': _packageName ?? ''
+              },
+              body: jsonEncode({
+                'device_id': deviceId,
+                'token': playToken,
+              }))
+          .timeout(timeout);
+
+      if (verifyRes.statusCode != 200) {
+        throw GeoEngineException(
+            'Device verification failed: ${verifyRes.body}');
+      }
+
+      final data = jsonDecode(verifyRes.body);
+
+      _sessionJwt = data['jwt'];
+
+      _jwtExpiration = DateTime.now().add(const Duration(hours: 7));
+
+      if (debug) print('[GeoEngine] Sesión verificada y JWT guardado');
     } catch (e) {
       if (debug) {
         print('GeoEngine Warning: No se pudo verificar integridad: $e');
@@ -206,8 +257,12 @@ class GeoEngine {
     _isFlushing = true;
 
     try {
-      await _ensureIntegrityToken();
       final rawData = _bufferBox!.values.toList();
+
+      if (rawData.isEmpty) {
+        if (debug) print('[GeoEngine] Buffer vacío. No hay datos para enviar.');
+        return;
+      }
 
       final batchPayload = rawData.map((item) {
         final map = Map<String, dynamic>.from(item as Map);
@@ -219,9 +274,14 @@ class GeoEngine {
         };
       }).toList();
 
+      final map = Map<String, dynamic>.from(rawData.first as Map);
+      final currentDeviceId = map['device_id'];
+
       if (debug) {
         print('[GeoEngine] Enviando batch de ${batchPayload.length} puntos...');
       }
+
+      await _ensureIntegrityToken(currentDeviceId);
 
       final uri = Uri.parse('$ingestUrl/v1/ingest/batch');
 
@@ -243,12 +303,13 @@ class GeoEngine {
           print(
               '[GeoEngine] 403 Forbidden (Integridad/Auth). Reseteando token para el próximo intento.');
         }
-        _cachedIntegrityToken = null;
-      } else {
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
         if (debug) {
           print(
-              '[GeoEngine] Error Servidor (${response.statusCode}): ${response.body}');
+              '[GeoEngine]: JWT Expirado o Invalido. Reseteando token para el próximo intento.');
         }
+        _sessionJwt = null;
+        _jwtExpiration = null;
       }
     } catch (e) {
       if (debug) print('[GeoEngine] Error de Red al sincronizar: $e');
@@ -328,12 +389,11 @@ class GeoEngine {
     return {
       'Content-Type': 'application/json',
       'X-API-Key': apiKey,
-      'User-Agent': 'GeoEngineFlutter/1.1.11',
+      'User-Agent': 'GeoEngineFlutter/1.2.0',
+      if (_sessionJwt != null) 'Authorization': 'Bearer $_sessionJwt',
       if (isAndroid) ...{
         'X-Platform': 'Android',
-        'X-Android-Package': _packageName ?? '',
-        if (_cachedIntegrityToken != null)
-          'X-Device-Integrity': _cachedIntegrityToken!,
+        'X-Android-Package': _packageName ?? ''
       },
       if (isIOS) ...{
         'X-IOS-Bundle-ID': _packageName ?? '',

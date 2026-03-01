@@ -25,6 +25,7 @@ class GeoEngineSdkPlugin: FlutterPlugin, MethodCallHandler {
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
         if (call.method == "generateIntegrityToken") {
             val cloudProjectNumber = call.argument<String>("projectNumber")?.toLongOrNull()
+            val receivedNonce = call.argument<String>("nonce")
 
             if (cloudProjectNumber == null) {
                 result.error("INVALID_ARGUMENT", "Project Number is required", null)
@@ -32,11 +33,11 @@ class GeoEngineSdkPlugin: FlutterPlugin, MethodCallHandler {
             }
 
             val integrityManager = IntegrityManagerFactory.create(applicationContext)
-            val nonce = java.util.UUID.randomUUID().toString()
+            val finalNonce = receivedNonce ?: java.util.UUID.randomUUID().toString()
 
             val request = com.google.android.play.core.integrity.IntegrityTokenRequest.builder()
                 .setCloudProjectNumber(cloudProjectNumber)
-                .setNonce(nonce)
+                .setNonce(finalNonce)
                 .build()
 
             integrityManager.requestIntegrityToken(request)

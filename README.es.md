@@ -133,11 +133,12 @@ await geo.sendLocation(
 
 Cuando envías una ubicación, Geo-Engine hace más que solo reenviar coordenadas:
 
-1. **Desafío (Challenge):** Contacta al enclave seguro de hardware (TEE) del dispositivo.
-2. **Atestación (Attest):** Solicita una prueba criptográfica de que el dispositivo es genuino, no modificado y no es un emulador.
-3. **Verificación (Verify):** Este token se adjunta a la carga útil (payload). Tu backend (o Geo-Engine Cloud) lo verifica directamente con los servidores de Apple/Google.
+1. **Desafío (Anti-Replay):** El SDK solicita un nonce criptográfico al backend de Geo-Engine.
+2. **Atestación (Attest):** Solicita al enclave seguro (TEE) una prueba de que el dispositivo es genuino, inyectando el nonce para evitar ataques de repetición.
+3. **Verificación (Verify):** El backend verifica el token con Google/Apple y emite una Sesión JWT temporal.
+4. **Telemetry Ultra-Rápida:** Las coordenadas se envían usando el JWT, asegurando una Ingestión sin latencia y manteniendo la seguridad Zero-Trust.
 
-**Resultado:** Dejas de pagar por viajes falsos y asistencias simuladas.
+**Resultado:** No pagues más por viajes falsos y asistencias simuladas.
 
 ---
 
@@ -165,7 +166,8 @@ final zone = await geo.createGeofence(
 * [x] Almacenamiento Offline (Store & Forward)
 * [x] **v1.0:** Optimización de Batería (Batching)
 * [x] **v1.1:** Integridad de Dispositivo Nativa (Anti-Fraude)
-* [ ] v1.2: Detección de Actividad y Movimiento (Quieto/Caminando/Conduciendo)
+* [x] **v1.2:** Escudo antireproducción basado en sesiones (apretón de manos + JWT)
+* [ ] **v1.3:** Detección de Actividad y Movimiento (Quieto/Caminando/Conduciendo)
 
 **¿Necesitas ayuda con la integración?** Abre un issue o contacta a los mantenedores.
 
