@@ -1,412 +1,238 @@
-/// The official GeoEngine SDK for Flutter.
+/// The official GeoEngine Flutter SDK.
 ///
-/// Provides capabilities for location tracking, geofencing, and
-/// validating device integrity.
-library geo_engine;
+/// Provides real-time background location tracking, local offline buffering,
+/// and Play Integrity/App Attest attestation for B2B spatial operations.
+library geo_engine_sdk;
 
-import 'dart:convert';
 import 'dart:async';
-import 'dart:io';
-import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
-import 'package:hive_flutter/hive_flutter.dart';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'app_device_integrity.dart';
 
-/// Custom exception thrown by the GeoEngine SDK when an error occurs.
-class GeoEngineException implements Exception {
-  /// A descriptive message of the error.
-  final String message;
+import 'src/auth/integrity_auth_manager.dart';
+import 'src/models/location_ping.dart';
+import 'src/models/sdk_exceptions.dart';
+import 'src/transport/grpc_batch_transport.dart';
 
-  /// Optional HTTP status code associated with the error.
-  final int? statusCode;
+export 'src/models/location_ping.dart';
+export 'src/models/sdk_exceptions.dart';
+export 'src/transport/grpc_batch_transport.dart' show BaseGrpcTransport;
 
-  /// Creates a new [GeoEngineException].
-  GeoEngineException(this.message, {this.statusCode});
-
-  @override
-  String toString() =>
-      "GeoEngineException: $message ${statusCode != null ? '(Code: $statusCode)' : ''}";
-}
-
-/// The main entry point for the GeoEngine SDK.
-///
-/// Use this class to initialize the tracking system and handle
-/// location updates securely.
+/// Main entry point for the GeoEngine SDK.
 class GeoEngine {
-  static const String _defaultManagementUrl = 'https://api.geoengine.dev';
-  static const String _defaultIngestUrl = 'https://ingest.geoengine.dev';
   static const String _boxName = 'geo_engine_buffer';
-  //String? _cachedIntegrityToken;
-  String? _packageName;
 
-  String? _sessionJwt;
-  DateTime? _jwtExpiration;
-
-  /// The API key used for authenticating with the GeoEngine services.
+  /// API Key used for project authentication.
   final String apiKey;
 
-  /// The base URL for the management API.
+  /// Base URL for administrative services and device integrity verification.
   final String managementUrl;
 
-  /// The base URL for the data ingestion API.
-  final String ingestUrl;
+  /// Host name for the gRPC location ingestion server.
+  final String grpcHost;
 
-  /// The timeout duration for HTTP requests.
+  /// Port number for gRPC calls (defaults to 443).
+  final int grpcPort;
+
+  /// Network request timeout.
   final Duration timeout;
 
-  /// Whether to enable debug logging to the console.
+  /// Enables verbose console logging when `true`.
   final bool debug;
 
-  /// The project number for Android Google Cloud, used for Device Integrity.
+  /// Cloud project number used for Android Play Integrity API checks.
   final String? androidCloudProjectNumber;
 
-  final http.Client _client;
+  late final IntegrityAuthManager _authManager;
+  late final BaseGrpcTransport _transport;
 
+  Box<LocationPing>? _bufferBox;
+  StreamSubscription? _networkSubscription;
+  bool _isFlushing = false;
+  String _packageName = 'dev.geoengine.app';
+
+  /// Internal flag for simulating Android behavior in unit tests.
   @visibleForTesting
   static bool? debugSimulateAndroid;
 
-  Box? _bufferBox;
-  StreamSubscription? _networkSubscription;
-  bool _isFlushing = false;
-
-  /// Initializes the local environment for the SDK.
+  /// Initializes persistent Hive storage required by the SDK.
   ///
-  /// This method must be called before creating any instance of [GeoEngine].
-  /// It initializes the local database (Hive) used for buffering location data.
+  /// Must be invoked prior to instantiating [GeoEngine].
   static Future<void> initialize() async {
     await Hive.initFlutter();
-    await Hive.openBox(_boxName);
+    if (!Hive.isAdapterRegistered(0)) {
+      Hive.registerAdapter(LocationPingAdapter());
+    }
+    await Hive.openBox<LocationPing>(_boxName);
   }
 
-  /// Creates a new instance of [GeoEngine].
-  ///
-  /// - [apiKey]: Required. The API key for your GeoEngine project.
-  /// - [managementUrl]: Optional. Overrides the default management API URL.
-  /// - [ingestUrl]: Optional. Overrides the default ingestion API URL.
-  /// - [timeout]: Connection timeout for requests (default: 10 seconds).
-  /// - [debug]: If true, prints debug info to the console (default: false).
-  /// - [androidCloudProjectNumber]: Required for Android apps to use Play Integrity.
-  /// - [client]: Optional [http.Client] for testing.
+  /// Constructs a [GeoEngine] client instance.
   GeoEngine({
     required this.apiKey,
+    required this.grpcHost,
+    this.grpcPort = 443,
     String? managementUrl,
-    String? ingestUrl,
     this.timeout = const Duration(seconds: 10),
     this.debug = false,
     this.androidCloudProjectNumber,
-    http.Client? client,
-  })  : managementUrl = managementUrl ?? _defaultManagementUrl,
-        ingestUrl = ingestUrl ?? _defaultIngestUrl,
-        _client = client ?? http.Client() {
+    BaseGrpcTransport? transportOverride,
+    http.Client? httpClientOverride,
+  }) : managementUrl = managementUrl ?? 'https://api.geoengine.dev' {
+    _authManager = IntegrityAuthManager(
+      managementUrl: this.managementUrl,
+      apiKey: apiKey,
+      androidCloudProjectNumber: androidCloudProjectNumber,
+      httpClient: httpClientOverride,
+    );
+    _transport = transportOverride ??
+        GrpcTransport(
+          host: grpcHost,
+          port: grpcPort,
+          useSecureChannel: true,
+        );
     _initInternals();
   }
 
-  /// Initializes the SDK with your API Key.
-  ///
-  /// Throws an [Exception] if the key is invalid.
   void _initInternals() async {
     if (Hive.isBoxOpen(_boxName)) {
-      _bufferBox = Hive.box(_boxName);
+      _bufferBox = Hive.box<LocationPing>(_boxName);
     } else {
-      _bufferBox = await Hive.openBox(_boxName);
+      _bufferBox = await Hive.openBox<LocationPing>(_boxName);
     }
 
-    _networkSubscription = Connectivity()
-        .onConnectivityChanged
-        .listen((List<ConnectivityResult> results) {
-      bool hasInternet = !results.contains(ConnectivityResult.none);
-
-      if (hasInternet) {
-        if (debug) {
-          print('[GeoEngine] Conexión detectada. Sincronizando buffer...');
-        }
-        _flushBuffer();
+    _networkSubscription =
+        Connectivity().onConnectivityChanged.listen((results) {
+      if (!results.contains(ConnectivityResult.none)) {
+        flushBuffer();
       }
     });
-    PackageInfo packageInfo = await PackageInfo.fromPlatform();
-    _packageName = packageInfo.packageName;
+
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      if (packageInfo.packageName.isNotEmpty) {
+        _packageName = packageInfo.packageName;
+      }
+    } catch (_) {
+      _packageName = 'dev.geoengine.test';
+    }
   }
 
-  /// Sends a location point to the GeoEngine system.
+  /// Buffers and transmits a single spatial coordinate update to GeoEngine.
   ///
-  /// The data is first stored in a persistent local buffer to ensure
-  /// it is not lost if there is no internet connection. Then, it attempts
-  /// to automatically synchronize the buffer.
-  ///
-  /// Parameters:
-  /// - [deviceId]: Unique identifier for the device.
-  /// - [latitude]: Latitude in decimal degrees.
-  /// - [longitude]: Longitude in decimal degrees.
-  /// - [timestamp]: (Optional) Time of the reading in seconds since Unix epoch.
-  ///   If omitted, `DateTime.now()` is used.
+  /// If the network is unavailable, the coordinate is stored in local storage
+  /// and automatically synchronized once connectivity is restored.
   Future<void> sendLocation({
     required String deviceId,
     required double latitude,
     required double longitude,
+    required double accuracy,
+    required double speed,
+    required double heading,
     int? timestamp,
+    bool isMocked = false,
   }) async {
-    final ts = timestamp ?? DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final ping = LocationPing(
+      deviceId: deviceId,
+      latitude: latitude,
+      longitude: longitude,
+      accuracy: accuracy,
+      speed: speed,
+      heading: heading,
+      timestamp: timestamp ?? DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      isMocked: isMocked,
+    );
 
-    final data = {
-      'device_id': deviceId,
-      'latitude': latitude,
-      'longitude': longitude,
-      'timestamp':
-          DateTime.fromMillisecondsSinceEpoch(ts * 1000).toIso8601String(),
-    };
+    final connectivity = await Connectivity().checkConnectivity();
+    final bool isOffline = connectivity.contains(ConnectivityResult.none);
 
-    if (_bufferBox != null) {
-      await _bufferBox!.add(data);
-      if (debug) {
-        print(
-            '[GeoEngine] Ping guardado. Buffer: ${_bufferBox!.length} items.');
+    if (isOffline || (_bufferBox != null && _bufferBox!.isNotEmpty)) {
+      await _enqueuePing(ping);
+      if (!isOffline) {
+        await flushBuffer();
       }
-    }
-
-    _flushBuffer();
-  }
-
-  Future<void> _ensureIntegrityToken(String deviceId) async {
-    if (_sessionJwt != null &&
-        _jwtExpiration != null &&
-        _jwtExpiration!.isAfter(DateTime.now()) &&
-        DateTime.now().isBefore(_jwtExpiration!)) {
       return;
     }
 
     try {
-      if (debug) {
-        print('[GeoEngine] Generando token de integridad...');
-      }
-
-      final challengeUri = Uri.parse('$managementUrl/api/v1/device/challenge');
-      final challengeRes = await _client
-          .post(challengeUri,
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': apiKey
-              },
-              body: jsonEncode({'device_id': deviceId}))
-          .timeout(timeout);
-      if (challengeRes.statusCode != 200) {
-        throw GeoEngineException(
-            'Failed to get security challenge: ${challengeRes.body}');
-      }
-      final nonce = jsonDecode(challengeRes.body)['nonce'];
-      final playToken = await AppDeviceIntegrity.generateIntegrityToken(
-        cloudProjectNumber: androidCloudProjectNumber,
-        nonce: nonce,
+      final jwt = await _authManager.getOrRefreshSessionJwt(
+        deviceId: deviceId,
+        packageName: _packageName,
       );
 
-      final verifyUri = Uri.parse('$managementUrl/api/v1/device/verify');
-      final verifyRes = await _client
-          .post(verifyUri,
-              headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': apiKey,
-                'X-Package-Name': _packageName ?? ''
-              },
-              body: jsonEncode({
-                'device_id': deviceId,
-                'token': playToken,
-              }))
-          .timeout(timeout);
+      final bool success = await _transport.sendSinglePing(
+        ping: ping,
+        jwtToken: jwt,
+      );
 
-      if (verifyRes.statusCode != 200) {
-        throw GeoEngineException(
-            'Device verification failed: ${verifyRes.body}');
+      if (!success) {
+        if (debug) debugPrint('[GeoEngine] Direct send failed. Buffering...');
+        await _enqueuePing(ping);
       }
-
-      final data = jsonDecode(verifyRes.body);
-
-      _sessionJwt = data['jwt'];
-
-      _jwtExpiration = DateTime.now().add(const Duration(hours: 7));
-
-      if (debug) print('[GeoEngine] Sesión verificada y JWT guardado');
-    } catch (e) {
-      if (debug) {
-        print('GeoEngine Warning: No se pudo verificar integridad: $e');
+    } on TransportException catch (e) {
+      if (e.statusCode == 401) {
+        await _authManager.getOrRefreshSessionJwt(
+          deviceId: deviceId,
+          packageName: _packageName,
+          forceRefresh: true,
+        );
       }
+      await _enqueuePing(ping);
+    } catch (_) {
+      await _enqueuePing(ping);
     }
   }
 
-  /// Synchronizes the points accumulated in the local buffer with the server.
-  ///
-  /// This method is called automatically after [sendLocation] or when
-  /// internet connectivity is recovered.
-  ///
-  /// The process includes:
-  /// 1. Connectivity check.
-  /// 2. Generation/verification of the integrity token (App Attest/Play Integrity).
-  /// 3. Batch transmission to the ingest endpoint.
-  /// 4. Clearing the buffer if the response is successful (200-299).
-  ///
-  /// If a 403 error occurs, an integrity problem is assumed and the token is recycled.
-  Future<void> _flushBuffer() async {
+  Future<void> _enqueuePing(LocationPing ping) async {
+    if (_bufferBox != null) {
+      await _bufferBox!.add(ping);
+    }
+  }
+
+  /// Transmits buffered location pings accumulated in local storage to the server.
+  Future<void> flushBuffer() async {
     if (_bufferBox == null || _bufferBox!.isEmpty || _isFlushing) return;
 
-    final connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult.contains(ConnectivityResult.none)) {
-      if (debug) print('[GeoEngine] Sin internet. Datos permanecen en local.');
-      return;
-    }
+    final connectivity = await Connectivity().checkConnectivity();
+    if (connectivity.contains(ConnectivityResult.none)) return;
 
     _isFlushing = true;
 
     try {
-      final rawData = _bufferBox!.values.toList();
+      final batch = _bufferBox!.values.take(100).toList();
+      if (batch.isEmpty) return;
 
-      if (rawData.isEmpty) {
-        if (debug) print('[GeoEngine] Buffer vacío. No hay datos para enviar.');
-        return;
-      }
+      final deviceId = batch.first.deviceId;
+      final jwt = await _authManager.getOrRefreshSessionJwt(
+        deviceId: deviceId,
+        packageName: _packageName,
+      );
 
-      final batchPayload = rawData.map((item) {
-        final map = Map<String, dynamic>.from(item as Map);
-        return {
-          'device_id': map['device_id'],
-          'lat': map['latitude'],
-          'lng': map['longitude'],
-          'timestamp': map['timestamp']
-        };
-      }).toList();
+      final bool success = await _transport.sendBatchWithRetry(
+        pings: batch,
+        jwtToken: jwt,
+      );
 
-      final map = Map<String, dynamic>.from(rawData.first as Map);
-      final currentDeviceId = map['device_id'];
+      if (success) {
+        final keysToDelete = _bufferBox!.keys.take(batch.length).toList();
+        await _bufferBox!.deleteAll(keysToDelete);
 
-      if (debug) {
-        print('[GeoEngine] Enviando batch de ${batchPayload.length} puntos...');
-      }
-
-      await _ensureIntegrityToken(currentDeviceId);
-
-      final uri = Uri.parse('$ingestUrl/v1/ingest/batch');
-
-      final response = await _client
-          .post(
-            uri,
-            headers: _headers,
-            body: jsonEncode(batchPayload),
-          )
-          .timeout(timeout);
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        if (debug) {
-          print('[GeoEngine] Batch enviado exitosamente. Limpiando buffer.');
+        if (_bufferBox!.isNotEmpty) {
+          _isFlushing = false;
+          await flushBuffer();
         }
-        await _bufferBox!.clear();
-      } else if (response.statusCode == 403) {
-        if (debug) {
-          print(
-              '[GeoEngine] 403 Forbidden (Integridad/Auth). Reseteando token para el próximo intento.');
-        }
-      } else if (response.statusCode == 401 || response.statusCode == 403) {
-        if (debug) {
-          print(
-              '[GeoEngine]: JWT Expirado o Invalido. Reseteando token para el próximo intento.');
-        }
-        _sessionJwt = null;
-        _jwtExpiration = null;
       }
-    } catch (e) {
-      if (debug) print('[GeoEngine] Error de Red al sincronizar: $e');
+    } catch (_) {
     } finally {
       _isFlushing = false;
     }
   }
 
-  /// Creates a new geofence polygon.
-  ///
-  /// - [name]: A human-readable name for the geofence.
-  /// - [coordinates]: A list of `[latitude, longitude]` pairs defining the polygon.
-  ///   Must contain at least 3 points.
-  /// - [webhookUrl]: The URL that will receive events when this geofence is triggered.
-  ///
-  /// Returns a [Map] containing the server response.
-  ///
-  /// Throws a [GeoEngineException] if the input is invalid or the server request fails.
-  Future<Map<String, dynamic>> createGeofence({
-    required String name,
-    required List<List<double>> coordinates,
-    required String webhookUrl,
-  }) async {
-    if (coordinates.length < 3) {
-      throw GeoEngineException(
-          "Se requieren al menos 3 puntos para un polígono");
-    }
-
-    final polygon = coordinates.map((p) => [p[1], p[0]]).toList();
-
-    if (polygon.first[0] != polygon.last[0] ||
-        polygon.first[1] != polygon.last[1]) {
-      polygon.add(polygon.first);
-    }
-
-    final payload = {
-      "name": name,
-      "webhook_url": webhookUrl,
-      "geojson": {
-        "type": "Polygon",
-        "coordinates": [polygon]
-      }
-    };
-
-    final uri = Uri.parse('$managementUrl/geofences');
-
-    if (debug) print('[GeoEngine] Creating geofence: $name');
-
-    try {
-      final response = await _client
-          .post(
-            uri,
-            headers: _headers,
-            body: jsonEncode(payload),
-          )
-          .timeout(timeout);
-
-      if (response.statusCode >= 400) {
-        throw GeoEngineException('Management Error: ${response.body}',
-            statusCode: response.statusCode);
-      }
-
-      return jsonDecode(response.body);
-    } on TimeoutException {
-      throw GeoEngineException('Connection timed out');
-    } catch (e) {
-      if (debug) print('[GeoEngine] Error: $e');
-      rethrow;
-    }
-  }
-
-  Map<String, String> get _headers {
-    final isAndroid = debugSimulateAndroid ?? Platform.isAndroid;
-    final isIOS =
-        !isAndroid && (debugSimulateAndroid == false ? true : Platform.isIOS);
-
-    return {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-      'User-Agent': 'GeoEngineFlutter/1.2.0',
-      if (_sessionJwt != null) 'Authorization': 'Bearer $_sessionJwt',
-      if (isAndroid) ...{
-        'X-Platform': 'Android',
-        'X-Android-Package': _packageName ?? ''
-      },
-      if (isIOS) ...{
-        'X-IOS-Bundle-ID': _packageName ?? '',
-        'X-Platform': 'iOS',
-      }
-    };
-  }
-
-  /// Closes the SDK instance and releases resources.
-  ///
-  /// Cancels network connectivity subscriptions and closes the HTTP client.
+  /// Cancels active network listeners and closes underlying connections.
   void close() {
     _networkSubscription?.cancel();
-    _client.close();
+    _transport.close();
   }
 }

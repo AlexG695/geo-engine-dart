@@ -1,73 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:geo_engine_sdk/geo_engine_sdk.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GeoEngine.initialize();
+
+  final geoEngine = GeoEngine(
+    apiKey: 'your_api_key_here',
+    grpcHost: 'grpc.ingest.geoengine.dev',
+    grpcPort: 443,
+    debug: true,
+  );
+
+  runApp(MyApp(geoEngine: geoEngine));
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class MyApp extends StatelessWidget {
+  final GeoEngine geoEngine;
 
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  String _status = 'Idle';
-
-  GeoEngine? _geoEngine;
-
-  @override
-  void initState() {
-    super.initState();
-    _initSdk();
-  }
-
-  Future<void> _initSdk() async {
-    try {
-      await GeoEngine.initialize();
-
-      _geoEngine = GeoEngine(
-        apiKey: "DEMO_API_KEY",
-        debug: true,
-      );
-
-      setState(() {
-        _status = 'SDK Initialized ✅';
-      });
-    } catch (e) {
-      setState(() {
-        _status = 'Error: $e';
-      });
-    }
-  }
+  const MyApp({super.key, required this.geoEngine});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        appBar: AppBar(
-          title: const Text('GeoEngine Example'),
-        ),
+        appBar: AppBar(title: const Text('GeoEngine SDK Example')),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text('SDK Status: $_status'),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                  onPressed: () {
-                    _geoEngine?.sendLocation(
-                      deviceId: "device_001",
-                      latitude: 37.7749,
-                      longitude: -122.4194,
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Location sent!")),
-                    );
-                  },
-                  child: const Text("Send Test Location"))
-            ],
+          child: ElevatedButton(
+            onPressed: () async {
+              await geoEngine.sendLocation(
+                deviceId: 'device_demo_01',
+                latitude: 37.7749,
+                longitude: -122.4194,
+                accuracy: 5.0,
+                speed: 0.0,
+                heading: 0.0,
+              );
+            },
+            child: const Text('Send Test Location Ping'),
           ),
         ),
       ),

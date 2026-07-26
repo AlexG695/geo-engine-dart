@@ -1,4 +1,4 @@
-# 🛡️ Geo-Engine Flutter SDK
+# 🛡️ GeoEngine Flutter SDK
 
 [![pub package](https://img.shields.io/pub/v/geo_engine_sdk.svg)](https://pub.dev/packages/geo_engine_sdk)
 ![Build Status](https://github.com/AlexG695/geo-engine-dart/actions/workflows/flutter_test.yml/badge.svg)
@@ -6,23 +6,23 @@
 
 > *Read this in Spanish: [README.es.md](./README.es.md)*
 
+**Zero-Trust, gRPC-powered, Offline-First, and Battery-Efficient location telemetry for mission-critical Flutter apps.**
 
-**Secure, Offline-First, and Battery-Efficient location tracking for mission-critical Flutter apps.**
+GeoEngine is a **telemetry assurance layer** designed for serverless architectures (GCP Cloud Run). It guarantees that coordinates received come from a real physical device by validating hardware attestation, rejecting Mock Locations, Emulators, and GPS Spoofing through cryptographic evidence.
 
-Geo-Engine is not just a location tracker; it is a **telemetry assurance layer**. It guarantees that the coordinates you receive come from a real physical device, rejecting Mock Locations, Emulators, and Bot Farms using cryptographic evidence.
-
-Designed for **Logistics, Fintech, and Workforce Management**.
+Designed for **Logistics, Ambulances, Fleet Tracking, and Workforce Telemetry**.
 
 ---
 
-## 🔥 Why Geo-Engine?
+## 🔥 Key Features
 
 | Feature | Description |
 | :--- | :--- |
-| 🛡️ **Anti-Spoofing** | Native integration with **Google Play Integrity** (Android) and **Apple DeviceCheck** (iOS) to verify device authenticity. |
-| ✈️ **Offline-First** | Military-grade resilience. Data is persisted locally (Hive) when offline and auto-synced when the network returns. |
-| 🔋 **Battery Smart** | Uses intelligent batching to minimize radio wake-ups, saving up to 40% battery compared to raw streaming. |
-| 🚀 **Drop-in Ready** | Get enterprise-grade tracking with just 5 lines of code. |
+| ⚡ **gRPC & Protobuf** | Ultra-compact binary serialization over HTTP/2 reduces mobile data overhead by up to 70%. |
+| 🛡️ **Anti-Spoofing** | Native integration with **Google Play Integrity** (Android) & **Apple DeviceCheck / App Attest** (iOS). |
+| ✈️ **Offline-First** | Automatic persistent FIFO storage (Hive) queues coordinates offline and flushes via gRPC Batch upon connection recovery. |
+| 🔋 **Battery Smart** | Dynamic distance filtering minimizes radio wake-ups, saving battery power. |
+| ☁️ **Cloud Run Ready** | Stateless Unary gRPC calls prevent socket connection drops and support seamless auto-scaling. |
 
 ---
 
@@ -41,15 +41,16 @@ flutter pub add geo_engine_sdk
 
 ### 1️⃣ Initialization
 
-Initialize the storage engine in your `main()` function.
+Initialize the Hive persistent storage engine inside your `main()` entry point before running the app:
 
 ```dart
+import 'package:flutter/material.dart';
 import 'package:geo_engine_sdk/geo_engine_sdk.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 🚀 Initialize the offline-first engine
+  // 🚀 Initialize the offline-first persistent engine
   await GeoEngine.initialize();
 
   runApp(const MyApp());
@@ -57,117 +58,85 @@ void main() async {
 
 ```
 
-### 2️⃣ Configuration (With Security)
+### 2️⃣ Configuration
 
-To enable the **Anti-Fraud** shield, provide your Google Cloud Project Number.
+Construct the `GeoEngine` client with your project credentials and gRPC ingestion endpoint:
 
 ```dart
 final geo = GeoEngine(
-  apiKey: 'sk_live_...',
+  apiKey: 'sk_live_your_api_key',
+  grpcHost: 'grpc.ingest.geoengine.dev', // GeoEngine Cloud Run Ingestion Host
+  grpcPort: 443,
+  managementUrl: '[https://api.geoengine.dev](https://api.geoengine.dev)',
+  
   // 🛡️ SECURITY ENABLED:
-  // This enables Play Integrity (Android) & DeviceCheck (iOS)
-  androidCloudProjectNumber: '1234567890', 
-  debug: true, 
+  // Enables Google Play Integrity (Android) & App Attest (iOS)
+  androidCloudProjectNumber: '123456789012', 
+  debug: kDebugMode, 
 );
 
 ```
----
 
-## 🔒 Security Configuration (Anti-Fraud)
+### 3️⃣ Send Verified Location Pings
 
-To enable the **Device Integrity Shield** (which blocks emulators, rooted devices, and GPS spoofing), you must configure the `androidCloudProjectNumber`.
-
-### Which Project Number should I use?
-
-It depends on your backend:
-
-| Scenario | Project Number to Use |
-| :--- | :--- |
-| **A. Using Geo Engine Cloud (SaaS)** | Use our official ID: **`939798381003`** |
-| **B. Self-Hosted Backend** | Use your **own** Google Cloud Project Number. |
-
-### Implementation
-
-Pass the number in the constructor. This tells Google to encrypt the integrity token specifically for the backend verifyier.
-
-```dart
-final geo = GeoEngine(
-  apiKey: "YOUR_API_KEY",
-  
-  // 🛡️ SECURITY CONFIGURATION
-  // This enables Play Integrity (Android) & DeviceCheck (iOS)
-  // ---------------------------------------------------------
-  // Option A: Using Geo Engine official Cloud
-  androidCloudProjectNumber: "939798381003", 
-  
-  // Option B: Self-Hosted (Use your own Project ID)
-  // androidCloudProjectNumber: "YOUR_OWN_PROJECT_NUMBER",
-);
-``
-
-### 3️⃣ Send Verified Location
-
-The SDK handles connectivity, buffering, and security headers automatically.
+The SDK manages connectivity, challenge-verify token generation, and gRPC transmission automatically:
 
 ```dart
 await geo.sendLocation(
   deviceId: 'driver-042',
   latitude: 19.4326,
   longitude: -99.1332,
+  accuracy: 4.5,
+  speed: 12.0,
+  heading: 180.0,
+  isMocked: false,
 );
 
-// ✅ Result:
-// - If Online: Sent immediately with Integrity Token.
-// - If Offline: Encrypted & saved to disk. Auto-flushed later.
+// ✅ Execution Pipeline:
+// - If Online: Sent immediately via gRPC Unary with verified Session JWT.
+// - If Offline: Persisted to disk (Hive) -> Auto-flushed in Batch upon reconnection.
 
 ```
 
 ---
 
-## 🛡️ How the Security Works
+## 🔒 Security Configuration (Anti-Fraud)
 
-When you send a location, Geo-Engine does more than just forward coordinates:
+To enable the **Device Integrity Shield** (blocking emulators, rooted devices, and GPS spoofing), provide your `androidCloudProjectNumber`.
 
-1. **Challenge (Anti-Replay):** The SDK requests a cryptographic nonce from the Geo-Engine backend.
-2. **Verify & Session:** It asks the secure hardware enclave (TEE) for proof that the device is genuine, injecting the nonce to prevent replay attacks.
-3. **Verify:** The backend verifies the token with Google/Apple and issues a short-lived JWT Session.
-4. **Ultra-Fast Telemetry:** Coordinates are sent using the lightweight JWT, ensuring 0-latency Ingestion without sacrificing Zero-Trust security.
+### Which Project Number should I use?
 
-**Outcome:** You stop paying for fake trips and spoofed attendance.
-
----
-
-## 🔧 Geofence Management
-
-Create dynamic monitoring zones programmatically:
+| Scenario | Project Number to Use |
+| --- | --- |
+| **A. Using GeoEngine Cloud (SaaS)** | Use our official SaaS ID: **`939798381003`** |
+| **B. Self-Hosted Infrastructure** | Use your **own** Google Cloud Project Number. |
 
 ```dart
-final zone = await geo.createGeofence(
-  name: "Central Warehouse",
-  webhookUrl: "[https://api.logistics.com/webhooks/entry](https://api.logistics.com/webhooks/entry)",
-  coordinates: [
-    [19.4, -99.1],
-    [19.5, -99.1],
-    [19.5, -99.2], 
-  ]
+final geo = GeoEngine(
+  apiKey: "YOUR_API_KEY",
+  grpcHost: "grpc.ingest.geoengine.dev",
+  
+  // 🛡️ SECURITY CONFIGURATION
+  // Option A: SaaS Nube Oficial
+  androidCloudProjectNumber: "939798381003", 
+  
+  // Option B: Self-Hosted Infrastructure
+  // androidCloudProjectNumber: "YOUR_OWN_PROJECT_NUMBER",
 );
 
 ```
 
 ---
 
-## 🛣 Roadmap & Support
+## 🛡️ How Zero-Trust Security Works
 
-* [x] Offline Store & Forward
-* [x] **v1.0:** Battery Optimization (Batching)
-* [x] **v1.1:** Native Device Integrity (Anti-Fraud)
-* [x] **v1.2:** Session-based Anti-Replay (Handshake + JWT)
-* [ ] v1.3: Motion Activity Detection (Still/Walking/Driving)
-
-**Need help integration?** Open an issue or contact the maintainers.
+1. **Challenge Nonce:** The SDK requests a single-use cryptographic nonce from the backend.
+2. **Hardware Attestation:** The native OS requests proof from the hardware enclave (TEE) that the device is untampered.
+3. **Session Verification:** The backend verifies the token directly with Google/Apple servers and issues a short-lived JWT.
+4. **Low-Latency Ingestion:** Location pings are transmitted over gRPC using the JWT in headers, maintaining zero-latency and high security.
 
 ---
 
 ## 📄 License
 
-MIT License © Geo-Engine
+MIT License © GeoEngine

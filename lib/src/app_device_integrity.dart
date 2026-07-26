@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Handles the communication with native platform integrity services.
@@ -25,10 +26,10 @@ class AppDeviceIntegrity {
       });
       return token;
     } on PlatformException catch (e) {
-      print("Integrity Check Error: ${e.message}");
+      debugPrint("Integrity Check Error: ${e.message}");
       return null;
     } catch (e) {
-      print("Integrity Check Unknown Error: $e");
+      debugPrint("Integrity Check Unknown Error: $e");
       return null;
     }
   }
