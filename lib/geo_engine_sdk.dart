@@ -19,6 +19,7 @@ import 'src/transport/grpc_batch_transport.dart';
 
 export 'src/models/location_ping.dart';
 export 'src/models/sdk_exceptions.dart';
+export 'src/version.dart';
 export 'src/transport/grpc_batch_transport.dart' show BaseGrpcTransport;
 
 /// Main entry point for the GeoEngine SDK.
@@ -52,7 +53,7 @@ class GeoEngine {
   Box<LocationPing>? _bufferBox;
   StreamSubscription? _networkSubscription;
   bool _isFlushing = false;
-  String _packageName = 'dev.geoengine.app';
+  late final Future<String> _appNameFuture;
 
   /// Internal flag for simulating Android behavior in unit tests.
   @visibleForTesting
@@ -81,6 +82,7 @@ class GeoEngine {
     BaseGrpcTransport? transportOverride,
     http.Client? httpClientOverride,
   }) : managementUrl = managementUrl ?? 'https://api.geoengine.dev' {
+    _appNameFuture = _resolveAppName();
     _authManager = IntegrityAuthManager(
       managementUrl: this.managementUrl,
       apiKey: apiKey,
@@ -109,15 +111,22 @@ class GeoEngine {
         flushBuffer();
       }
     });
+  }
 
+  Future<String> _resolveAppName() async {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
+      if (packageInfo.appName.isNotEmpty) {
+        return packageInfo.appName;
+      }
       if (packageInfo.packageName.isNotEmpty) {
-        _packageName = packageInfo.packageName;
+        return packageInfo.packageName;
       }
     } catch (_) {
-      _packageName = 'dev.geoengine.test';
+      // Fall back to a stable default when package metadata is unavailable.
     }
+
+    return 'dev.geoengine.app';
   }
 
   /// Buffers and transmits a single spatial coordinate update to GeoEngine.
@@ -156,10 +165,12 @@ class GeoEngine {
       return;
     }
 
+    final appName = await _appNameFuture;
+
     try {
       final jwt = await _authManager.getOrRefreshSessionJwt(
         deviceId: deviceId,
-        packageName: _packageName,
+        packageName: appName,
       );
 
       final bool success = await _transport.sendSinglePing(
@@ -175,7 +186,7 @@ class GeoEngine {
       if (e.statusCode == 401) {
         await _authManager.getOrRefreshSessionJwt(
           deviceId: deviceId,
-          packageName: _packageName,
+          packageName: appName,
           forceRefresh: true,
         );
       }
@@ -205,9 +216,10 @@ class GeoEngine {
       if (batch.isEmpty) return;
 
       final deviceId = batch.first.deviceId;
+      final appName = await _appNameFuture;
       final jwt = await _authManager.getOrRefreshSessionJwt(
         deviceId: deviceId,
-        packageName: _packageName,
+        packageName: appName,
       );
 
       final bool success = await _transport.sendBatchWithRetry(

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -31,6 +33,29 @@ class AppDeviceIntegrity {
     } catch (e) {
       debugPrint("Integrity Check Unknown Error: $e");
       return null;
+    }
+  }
+
+  /// Returns the best-effort device model reported by the host platform.
+  static Future<String?> getDeviceModel() async {
+    try {
+      final String? model = await _channel.invokeMethod('getDeviceModel');
+      return model;
+    } on PlatformException catch (e) {
+      debugPrint("Device Model Error: ${e.message}");
+      return Platform.localHostname;
+    } catch (e) {
+      debugPrint("Device Model Unknown Error: $e");
+      return Platform.localHostname;
+    }
+  }
+
+  static Future<String> getNativeDeviceId() async {
+    try {
+      final String deviceId = await _channel.invokeMethod('getNativeDeviceId');
+      return deviceId;
+    } on PlatformException catch (e) {
+      return "fallback_${DateTime.now().millisecondsSinceEpoch}";
     }
   }
 }

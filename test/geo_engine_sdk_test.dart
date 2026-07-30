@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:connectivity_plus_platform_interface/connectivity_plus_platform_interface.dart';
 import 'package:flutter/services.dart';
@@ -76,6 +77,11 @@ void main() {
         if (methodCall.method == 'generateIntegrityToken') {
           return "mock_play_integrity_token_12345";
         }
+
+        if (methodCall.method == 'getDeviceModel') {
+          return 'MockPhone X';
+        }
+
         return null;
       },
     );
@@ -111,11 +117,12 @@ void main() {
     }
   });
 
-  MockClient createMockHttpClient() {
+  MockClient createMockHttpClient({void Function(Map<String, dynamic>)? onChallengeBody}) {
     return MockClient((http.Request request) async {
       final url = request.url.toString();
 
       if (url.contains('/api/v1/device/challenge')) {
+        onChallengeBody?.call(jsonDecode(request.body) as Map<String, dynamic>);
         return http.Response('{"nonce": "mock_nonce_98765"}', 200);
       }
 
@@ -194,11 +201,15 @@ void main() {
       mockConnectivity.currentConnectivity = [ConnectivityResult.wifi];
       mockGrpcTransport.shouldSucceed = true;
 
+      Map<String, dynamic>? capturedChallengeBody;
+
       final geo = GeoEngine(
         apiKey: 'test_api_key',
         grpcHost: 'localhost',
         transportOverride: mockGrpcTransport,
-        httpClientOverride: createMockHttpClient(),
+        httpClientOverride: createMockHttpClient(
+          onChallengeBody: (body) => capturedChallengeBody = body,
+        ),
         debug: true,
       );
 
@@ -213,6 +224,13 @@ void main() {
 
       final Box<LocationPing> box = Hive.box<LocationPing>('geo_engine_buffer');
       expect(box.length, 0);
+      expect(capturedChallengeBody, isNotNull);
+      expect(capturedChallengeBody!['hardware_fingerprint'], 'device_online_01');
+      expect(capturedChallengeBody!['name'], 'GeoEngine Test App');
+      expect(capturedChallengeBody!['os'], Platform.operatingSystem);
+      expect(capturedChallengeBody!['model'], 'MockPhone X');
+      expect(capturedChallengeBody!['sdk_version'], geoEngineSdkVersion);
+      expect(capturedChallengeBody!['os_version'], isNotEmpty);
     });
   });
 

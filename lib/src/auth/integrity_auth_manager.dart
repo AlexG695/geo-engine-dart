@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../app_device_integrity.dart';
 import '../models/sdk_exceptions.dart';
+import '../version.dart';
 
 /// Coordinates device attestation and JWT session lifecycle with the GeoEngine backend.
 class IntegrityAuthManager {
@@ -67,10 +69,22 @@ class IntegrityAuthManager {
     required String packageName,
   }) async {
     final challengeUri = Uri.parse('$managementUrl/api/v1/device/challenge');
+    final deviceModel = await AppDeviceIntegrity.getDeviceModel();
+    final deviceHash = (await AppDeviceIntegrity.getNativeDeviceId());
+    final model =
+        deviceModel == null || deviceModel.isEmpty ? 'unknown' : deviceModel;
+
     final challengeResponse = await _httpClient.post(
       challengeUri,
       headers: {'Content-Type': 'application/json', 'X-API-Key': apiKey},
-      body: jsonEncode({'device_id': deviceId}),
+      body: jsonEncode({
+        'hardware_fingerprint': deviceHash,
+        'name': packageName,
+        'os': Platform.operatingSystem,
+        'os_version': Platform.operatingSystemVersion,
+        'model': model,
+        'sdk_version': geoEngineSdkVersion,
+      }),
     );
 
     if (challengeResponse.statusCode != 200) {
@@ -81,6 +95,7 @@ class IntegrityAuthManager {
     }
 
     final nonce = jsonDecode(challengeResponse.body)['nonce'] as String;
+    final deviceId = jsonDecode(challengeResponse.body)['device_id'] as String;
 
     final playToken = await AppDeviceIntegrity.generateIntegrityToken(
       cloudProjectNumber: androidCloudProjectNumber,
@@ -95,11 +110,7 @@ class IntegrityAuthManager {
         'X-API-Key': apiKey,
         'X-Package-Name': packageName,
       },
-      body: jsonEncode({
-        'device_id': deviceId,
-        'token': playToken,
-        'play_token': playToken,
-      }),
+      body: jsonEncode({'device_id': deviceId, 'token': playToken}),
     );
 
     if (verifyResponse.statusCode != 200) {
