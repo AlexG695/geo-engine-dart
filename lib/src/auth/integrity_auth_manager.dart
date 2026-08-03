@@ -95,7 +95,8 @@ class IntegrityAuthManager {
     }
 
     final nonce = jsonDecode(challengeResponse.body)['nonce'] as String;
-    final deviceId = jsonDecode(challengeResponse.body)['device_id'] as String;
+    final serverDeviceId =
+        jsonDecode(challengeResponse.body)['device_id'] as String;
 
     final playToken = await AppDeviceIntegrity.generateIntegrityToken(
       cloudProjectNumber: androidCloudProjectNumber,
@@ -110,7 +111,7 @@ class IntegrityAuthManager {
         'X-API-Key': apiKey,
         'X-Package-Name': packageName,
       },
-      body: jsonEncode({'device_id': deviceId, 'token': playToken}),
+      body: jsonEncode({'device_id': serverDeviceId, 'token': playToken}),
     );
 
     if (verifyResponse.statusCode != 200) {

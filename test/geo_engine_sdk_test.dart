@@ -74,15 +74,16 @@ void main() {
         .setMockMethodCallHandler(
       const MethodChannel('app_device_integrity'),
       (MethodCall methodCall) async {
-        if (methodCall.method == 'generateIntegrityToken') {
-          return "mock_play_integrity_token_12345";
+        switch (methodCall.method) {
+          case 'generateIntegrityToken':
+            return "mock_play_integrity_token_12345";
+          case 'getDeviceModel':
+            return 'MockPhone X';
+          case 'getNativeDeviceId':
+            return 'device_online_01';
+          default:
+            return null;
         }
-
-        if (methodCall.method == 'getDeviceModel') {
-          return 'MockPhone X';
-        }
-
-        return null;
       },
     );
   });
@@ -91,7 +92,7 @@ void main() {
     mockGrpcTransport = MockGrpcTransport();
 
     PackageInfo.setMockInitialValues(
-      appName: 'GeoEngine Test App',
+      appName: 'dev.geoengine.test',
       packageName: 'dev.geoengine.test',
       version: '1.0.0',
       buildNumber: '1',
@@ -117,18 +118,29 @@ void main() {
     }
   });
 
-  MockClient createMockHttpClient({void Function(Map<String, dynamic>)? onChallengeBody}) {
+  MockClient createMockHttpClient(
+      {void Function(Map<String, dynamic>)? onChallengeBody}) {
     return MockClient((http.Request request) async {
       final url = request.url.toString();
 
       if (url.contains('/api/v1/device/challenge')) {
         onChallengeBody?.call(jsonDecode(request.body) as Map<String, dynamic>);
-        return http.Response('{"nonce": "mock_nonce_98765"}', 200);
+        return http.Response(
+          jsonEncode({
+            'nonce': 'mock_nonce_98765',
+            'device_id': 'device_online_01',
+          }),
+          200,
+        );
       }
 
       if (url.contains('/api/v1/device/verify')) {
         return http.Response(
-          '{"status": "verified", "jwt": "valid_mock_jwt_xyz", "expires_in": 3600}',
+          jsonEncode({
+            'status': 'verified',
+            'jwt': 'valid_mock_jwt_xyz',
+            'expires_in': 3600,
+          }),
           200,
         );
       }
@@ -225,8 +237,9 @@ void main() {
       final Box<LocationPing> box = Hive.box<LocationPing>('geo_engine_buffer');
       expect(box.length, 0);
       expect(capturedChallengeBody, isNotNull);
-      expect(capturedChallengeBody!['hardware_fingerprint'], 'device_online_01');
-      expect(capturedChallengeBody!['name'], 'GeoEngine Test App');
+      expect(
+          capturedChallengeBody!['hardware_fingerprint'], 'device_online_01');
+      expect(capturedChallengeBody!['name'], 'dev.geoengine.test');
       expect(capturedChallengeBody!['os'], Platform.operatingSystem);
       expect(capturedChallengeBody!['model'], 'MockPhone X');
       expect(capturedChallengeBody!['sdk_version'], geoEngineSdkVersion);
