@@ -26,9 +26,6 @@ export 'src/transport/grpc_batch_transport.dart' show BaseGrpcTransport;
 class GeoEngine {
   static const String _boxName = 'geo_engine_buffer';
 
-  /// API Key used for project authentication.
-  final String apiKey;
-
   /// Base URL for administrative services and device integrity verification.
   final String managementUrl;
 
@@ -72,7 +69,6 @@ class GeoEngine {
 
   /// Constructs a [GeoEngine] client instance.
   GeoEngine({
-    required this.apiKey,
     required this.grpcHost,
     this.grpcPort = 443,
     String? managementUrl,
@@ -85,7 +81,6 @@ class GeoEngine {
     _appNameFuture = _resolveAppName();
     _authManager = IntegrityAuthManager(
       managementUrl: this.managementUrl,
-      apiKey: apiKey,
       androidCloudProjectNumber: androidCloudProjectNumber,
       httpClient: httpClientOverride,
     );
@@ -96,6 +91,11 @@ class GeoEngine {
           useSecureChannel: true,
         );
     _initInternals();
+  }
+
+  /// Sets or updates the primary session JWT (obtained during driver login).
+  Future<void> setSessionToken(String sessionJwt) async {
+    await _authManager.setSessionJwt(sessionJwt);
   }
 
   void _initInternals() async {
@@ -168,7 +168,7 @@ class GeoEngine {
     final appName = await _appNameFuture;
 
     try {
-      final jwt = await _authManager.getOrRefreshSessionJwt(
+      final jwt = await _authManager.getOrRefreshIngestionJwt(
         deviceId: deviceId,
         packageName: appName,
       );
@@ -184,7 +184,7 @@ class GeoEngine {
       }
     } on TransportException catch (e) {
       if (e.statusCode == 401) {
-        await _authManager.getOrRefreshSessionJwt(
+        await _authManager.getOrRefreshIngestionJwt(
           deviceId: deviceId,
           packageName: appName,
           forceRefresh: true,
@@ -217,7 +217,7 @@ class GeoEngine {
 
       final deviceId = batch.first.deviceId;
       final appName = await _appNameFuture;
-      final jwt = await _authManager.getOrRefreshSessionJwt(
+      final jwt = await _authManager.getOrRefreshIngestionJwt(
         deviceId: deviceId,
         packageName: appName,
       );

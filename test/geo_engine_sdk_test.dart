@@ -154,7 +154,6 @@ void main() {
       mockConnectivity.currentConnectivity = [ConnectivityResult.none];
 
       final geo = GeoEngine(
-        apiKey: 'test_api_key',
         grpcHost: 'localhost',
         transportOverride: mockGrpcTransport,
         httpClientOverride: createMockHttpClient(),
@@ -179,7 +178,6 @@ void main() {
       mockConnectivity.currentConnectivity = [ConnectivityResult.none];
 
       final geo = GeoEngine(
-        apiKey: 'test_api_key',
         grpcHost: 'localhost',
         transportOverride: mockGrpcTransport,
         httpClientOverride: createMockHttpClient(),
@@ -216,7 +214,6 @@ void main() {
       Map<String, dynamic>? capturedChallengeBody;
 
       final geo = GeoEngine(
-        apiKey: 'test_api_key',
         grpcHost: 'localhost',
         transportOverride: mockGrpcTransport,
         httpClientOverride: createMockHttpClient(
@@ -224,6 +221,8 @@ void main() {
         ),
         debug: true,
       );
+
+      await geo.setSessionToken('mock_session_jwt_123');
 
       await geo.sendLocation(
         deviceId: 'device_online_01',
