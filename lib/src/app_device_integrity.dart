@@ -50,11 +50,12 @@ class AppDeviceIntegrity {
     }
   }
 
+  /// Returns a platform-specific hardware identifier or device fingerprint.
   static Future<String> getNativeDeviceId() async {
     try {
       final String deviceId = await _channel.invokeMethod('getNativeDeviceId');
       return deviceId;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return "fallback_${DateTime.now().millisecondsSinceEpoch}";
     }
   }

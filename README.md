@@ -67,7 +67,7 @@ final geo = GeoEngine(
   apiKey: 'sk_live_your_api_key',
   grpcHost: 'grpc.ingest.geoengine.dev', // GeoEngine Cloud Run Ingestion Host
   grpcPort: 443,
-  managementUrl: '[https://api.geoengine.dev](https://api.geoengine.dev)',
+  managementUrl: '[https://management.geoengine.dev](https://management.geoengine.dev)',
   
   // 🛡️ SECURITY ENABLED:
   // Enables Google Play Integrity (Android) & App Attest (iOS)

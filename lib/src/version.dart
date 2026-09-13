@@ -1,1 +1,2 @@
-const String geoEngineSdkVersion = '1.2.0';
+/// The current version of the GeoEngine SDK.
+const String geoEngineSdkVersion = '2.0.0';

@@ -1,16 +1,28 @@
 import 'dart:async';
 import 'package:geolocator/geolocator.dart';
 
-enum TrackingProfile { highAccuracy, balanced, lowPower }
+/// Performance and battery consumption profiles for location tracking.
+enum TrackingProfile {
+  /// Highest accuracy with frequent updates, suitable for active navigation.
+  highAccuracy,
 
+  /// Moderate accuracy balanced with reasonable power consumption.
+  balanced,
+
+  /// Minimal power consumption with infrequent updates, suitable for background tracking.
+  lowPower,
+}
+
+/// Tracks real-time device location using adaptive accuracy profiles.
 class AdaptiveLocationTracker {
   StreamSubscription<Position>? _positionSubscription;
 
+  /// Starts location updates matching the specified [profile].
   Future<void> startTracking({
     required TrackingProfile profile,
     required Function(Position position) onPositionReceived,
   }) async {
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       throw Exception('Los servicios de ubicación están desactivados.');
     }
@@ -58,6 +70,7 @@ class AdaptiveLocationTracker {
     }
   }
 
+  /// Stops the active location stream subscription.
   Future<void> stopTracking() async {
     await _positionSubscription?.cancel();
     _positionSubscription = null;

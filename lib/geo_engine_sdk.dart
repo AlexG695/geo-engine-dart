@@ -20,7 +20,11 @@ import 'src/transport/grpc_batch_transport.dart';
 export 'src/models/location_ping.dart';
 export 'src/models/sdk_exceptions.dart';
 export 'src/version.dart';
-export 'src/transport/grpc_batch_transport.dart' show BaseGrpcTransport;
+export 'src/transport/grpc_batch_transport.dart'
+    show BaseGrpcTransport, GrpcAuthInterceptor;
+export 'src/auth/zero_trust_auth_client.dart'
+    show ZeroTrustAuthClient, TokenProvider;
+export 'src/auth/integrity_auth_manager.dart' show IntegrityAuthManager;
 
 /// Main entry point for the GeoEngine SDK.
 class GeoEngine {
@@ -74,13 +78,21 @@ class GeoEngine {
     String? managementUrl,
     this.timeout = const Duration(seconds: 10),
     this.debug = false,
-    this.androidCloudProjectNumber,
+    this.androidCloudProjectNumber = '939798381003',
     BaseGrpcTransport? transportOverride,
     http.Client? httpClientOverride,
-  }) : managementUrl = managementUrl ?? 'https://api.geoengine.dev' {
+    String? apiKey,
+    String? clientId,
+    String? deviceSecret,
+  }) : managementUrl = managementUrl ?? 'https://management.geoengine.dev' {
     _appNameFuture = _resolveAppName();
+    final effectiveClientId = clientId ?? apiKey ?? '';
+    final effectiveDeviceSecret = deviceSecret ?? apiKey ?? '';
+
     _authManager = IntegrityAuthManager(
       managementUrl: this.managementUrl,
+      clientId: effectiveClientId,
+      deviceSecret: effectiveDeviceSecret,
       androidCloudProjectNumber: androidCloudProjectNumber,
       httpClient: httpClientOverride,
     );
@@ -89,6 +101,7 @@ class GeoEngine {
           host: grpcHost,
           port: grpcPort,
           useSecureChannel: true,
+          tokenProvider: _authManager,
         );
     _initInternals();
   }

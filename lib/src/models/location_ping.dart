@@ -38,7 +38,7 @@ class LocationPing extends HiveObject {
   @HiveField(7)
   final bool isMocked;
 
-  /// Creates a immutable [LocationPing] instance.
+  /// Creates an immutable [LocationPing] instance.
   LocationPing({
     required this.deviceId,
     required this.latitude,
