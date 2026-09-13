@@ -54,13 +54,16 @@ class ZeroTrustAuthClient extends http.BaseClient {
 
     var response = await _inner.send(request);
 
-    if (response.statusCode == 401 && isRetryable && originalRequestCopy != null) {
+    if (response.statusCode == 401 &&
+        isRetryable &&
+        originalRequestCopy != null) {
       _tokenProvider.invalidateToken();
       final freshToken = await _tokenProvider.getValidToken(forceRefresh: true);
 
       final retryRequest = _copyRequest(originalRequestCopy);
       final retryNow = DateTime.now().millisecondsSinceEpoch;
-      _signAndInjectHeaders(retryRequest, token: freshToken, timestampMs: retryNow);
+      _signAndInjectHeaders(retryRequest,
+          token: freshToken, timestampMs: retryNow);
 
       response = await _inner.send(retryRequest);
     }

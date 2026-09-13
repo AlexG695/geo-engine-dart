@@ -69,7 +69,8 @@ class IntegrityAuthManager implements TokenProvider {
     String? packageName,
   }) async {
     if (!forceRefresh && _inMemoryJwt != null && _inMemoryExpiry != null) {
-      if (DateTime.now().isBefore(_inMemoryExpiry!.subtract(const Duration(minutes: 5)))) {
+      if (DateTime.now()
+          .isBefore(_inMemoryExpiry!.subtract(const Duration(minutes: 5)))) {
         return _inMemoryJwt!;
       }
     }
@@ -83,7 +84,8 @@ class IntegrityAuthManager implements TokenProvider {
       if (cachedIngestionJwt != null && expiryStr != null) {
         final expiry = DateTime.tryParse(expiryStr);
         if (expiry != null &&
-            DateTime.now().isBefore(expiry.subtract(const Duration(minutes: 5)))) {
+            DateTime.now()
+                .isBefore(expiry.subtract(const Duration(minutes: 5)))) {
           _inMemoryJwt = cachedIngestionJwt;
           _inMemoryExpiry = expiry;
           return cachedIngestionJwt;
@@ -130,14 +132,15 @@ class IntegrityAuthManager implements TokenProvider {
     String? deviceId,
     String? packageName,
   }) async {
-    final effectivePackageName =
-        (packageName != null && packageName.isNotEmpty)
-            ? packageName
-            : 'dev.geoengine.app';
+    final effectivePackageName = (packageName != null && packageName.isNotEmpty)
+        ? packageName
+        : 'dev.geoengine.app';
 
     final effectiveDeviceId = (deviceId != null && deviceId.isNotEmpty)
         ? deviceId
-        : (clientId.isNotEmpty ? clientId : await AppDeviceIntegrity.getNativeDeviceId());
+        : (clientId.isNotEmpty
+            ? clientId
+            : await AppDeviceIntegrity.getNativeDeviceId());
 
     final deviceModel = await AppDeviceIntegrity.getDeviceModel();
     final deviceHash = await AppDeviceIntegrity.getNativeDeviceId();
@@ -154,7 +157,8 @@ class IntegrityAuthManager implements TokenProvider {
     };
 
     if (deviceSecret.isNotEmpty) {
-      challengeHeaders['X-Signature'] = ZeroTrustAuthClient.generateHmacSignature(
+      challengeHeaders['X-Signature'] =
+          ZeroTrustAuthClient.generateHmacSignature(
         secret: deviceSecret,
         clientId: effectiveDeviceId,
         timestampMs: now,
@@ -199,13 +203,15 @@ class IntegrityAuthManager implements TokenProvider {
       );
     }
 
-    final challengeData = jsonDecode(challengeResponse.body) as Map<String, dynamic>;
+    final challengeData =
+        jsonDecode(challengeResponse.body) as Map<String, dynamic>;
     final dataMap = challengeData['data'] is Map<String, dynamic>
         ? challengeData['data'] as Map<String, dynamic>
         : challengeData;
 
     final nonce = dataMap['nonce'] as String;
-    final serverDeviceId = (dataMap['device_id'] as String?) ?? effectiveDeviceId;
+    final serverDeviceId =
+        (dataMap['device_id'] as String?) ?? effectiveDeviceId;
 
     final playToken = await AppDeviceIntegrity.generateIntegrityToken(
       cloudProjectNumber: androidCloudProjectNumber,
@@ -269,7 +275,8 @@ class IntegrityAuthManager implements TokenProvider {
         : body;
 
     final ingestionJwt = (verifyData['jwt'] ?? body['jwt']) as String;
-    final expiresIn = (verifyData['expires_in'] ?? body['expires_in'] ?? 3600) as int;
+    final expiresIn =
+        (verifyData['expires_in'] ?? body['expires_in'] ?? 3600) as int;
 
     final expiryDate = DateTime.now().add(Duration(seconds: expiresIn));
 

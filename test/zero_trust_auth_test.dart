@@ -182,11 +182,14 @@ void main() {
       // Call 2: Must be served from L1 memory cache without HTTP calls
       final token2 = await authManager.getValidToken(deviceId: 'm2m_device_99');
       expect(token2, 'jwt_m2m_scoped_token_xyz');
-      expect(challengeCalls, 1, reason: 'L1 cache must prevent second HTTP challenge call');
-      expect(verifyCalls, 1, reason: 'L1 cache must prevent second HTTP verify call');
+      expect(challengeCalls, 1,
+          reason: 'L1 cache must prevent second HTTP challenge call');
+      expect(verifyCalls, 1,
+          reason: 'L1 cache must prevent second HTTP verify call');
     });
 
-    test('Thundering herd protection joins concurrent token requests into a single network call',
+    test(
+        'Thundering herd protection joins concurrent token requests into a single network call',
         () async {
       int challengeCalls = 0;
 
